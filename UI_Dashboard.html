@@ -1,0 +1,89 @@
+<!--
+  Akamas Short Mat Bowls Club — Executive Management Layout Container
+  File: UI_Dashboard2.html (Reconciled Visual Structural Core)
+  Version: 3.2.0-Production
+-->
+<div id="smbcControlDashboard" style="font-family:sans-serif; background:#1e222b; color:#fff; padding:20px;">
+  
+  <!-- Navigation Header Command Ribbon Layout -->
+  <div class="dashboard-header-bar" style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #2ed573; padding-bottom:15px; margin-bottom:20px;">
+    <div>
+      <h2 style="margin:0; color:#2ed573;">🎳 Executive Control Cockpit</h2>
+      Loading user session tokens...</small>
+    </div>
+    <div class="navigation-button-group">
+      <button onclick="DashboardApp.switchTab('dashboard')" class="nav-btn active" id="btnTabDashboard" style="padding:10px 15px; background:#282c34; color:#fff; border:1px solid #4b6584; border-radius:6px; cursor:pointer; font-weight:bold; margin-right:5px;">Dashboard</button>
+      <button onclick="DashboardApp.switchTab('members')" class="nav-btn" id="btnTabMembers" style="padding:10px 15px; background:#282c34; color:#fff; border:1px solid #4b6584; border-radius:6px; cursor:pointer; font-weight:bold; margin-right:5px;">Members</button>
+      <button onclick="DashboardApp.switchTab('cashier')" class="nav-btn" id="btnTabCashier" style="padding:10px 15px; background:#282c34; color:#fff; border:1px solid #4b6584; border-radius:6px; cursor:pointer; font-weight:bold;">Cashier</button>
+    </div>
+  </div>
+
+  <!-- MAIN DASHBOARD VIEWPORT SECTION PANEL -->
+  <div id="viewDashboard" class="viewport-panel">
+    <div class="metrics-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:15px; margin-bottom:25px;">
+      <div class="metric-card" style="background:#282c34; padding:20px; border-radius:8px; border:1px solid #4b6584; text-align:center;">
+        <div style="color:#a5b1c2; font-size:12px; font-weight:bold; margin-bottom:5px;">ACTIVE MEMBERS</div>
+        <div id="txtActiveMembers" style="font-size:28px; font-weight:bold; color:#2ed573;">0</div>
+      </div>
+      <div class="metric-card" style="background:#282c34; padding:20px; border-radius:8px; border:1px solid #4b6584; text-align:center;">
+        <div style="color:#a5b1c2; font-size:12px; font-weight:bold; margin-bottom:5px;">SIGNED CASH NET INCOME</div>
+        <div id="txtNetRevenue" style="font-size:28px; font-weight:bold; color:#2ed573;">€0.00</div>
+      </div>
+    </div>
+    
+    <h3 style="color:#2ed573; border-bottom:1px solid #4b6584; padding-bottom:5px;">Recent Ledger Transactions</h3>
+    <div id="gridRecentActivityTable" style="background:#282c34; border-radius:8px; padding:15px; overflow-x:auto;">
+      <p style="color:#a5b1c2;">Streaming data records from sheet...</p>
+    </div>
+  </div>
+
+  <!-- MEMBERSHIP OPERATION VIEWPORT SECTION PANEL -->
+  <div id="viewMembers" class="viewport-panel" style="display:none;">
+    <div style="text-align:right; margin-bottom:15px;">
+      <button onclick="DashboardApp.openNewMemberModal()" style="padding:10px 20px; background:#2ed573; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">+ Add New Bowler</button>
+    </div>
+    <div id="gridMembersTable" style="background:#282c34; border-radius:8px; padding:15px; overflow-x:auto;">
+      <p style="color:#a5b1c2;">Loading membership data profiles...</p>
+    </div>
+  </div>
+
+  <!-- CASHIER SETTLEMENT VIEWPORT SECTION PANEL -->
+  <div id="viewCashier" class="viewport-panel" style="display:none;">
+    <div style="background:#282c34; padding:20px; border-radius:12px; border:1px solid #4b6584; max-width:500px; margin:0 auto;">
+      <h3 style="margin-top:0; color:#2ed573;">Process Attendee Settlement</h3>
+      <div style="margin-bottom:15px;">
+        <label style="display:block; margin-bottom:5px; font-size:12px; color:#a5b1c2;">Unpaid Attendance Log ID</label>
+        <input type="text" id="txtSettlementAttendanceId" placeholder="e.g. ATT000085" style="width:100%; padding:10px; background:#1e222b; border:1px solid #4b6584; color:#fff; border-radius:6px; box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:15px;">
+        <label style="display:block; margin-bottom:5px; font-size:12px; color:#a5b1c2;">Mat Fee Product Override (Optional)</label>
+        <input type="text" id="txtSettlementProductOverride" placeholder="e.g. ST003" style="width:100%; padding:10px; background:#1e222b; border:1px solid #4b6584; color:#fff; border-radius:6px; box-sizing:border-box;">
+      </div>
+      <button onclick="DashboardApp.executeCashierSettlement()" style="width:100%; padding:12px; background:#2ed573; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size:14px;">Post Cash Receipt Entry</button>
+    </div>
+    
+    <div style="margin-top:20px;">
+      <h4 style="color:#ff4757;">Unpaid Attendance Summary</h4>
+      <div style="background:#282c34; border-radius:8px; padding:15px; overflow-x:auto;">
+        <table class="data-table" style="width:100%; border-collapse:collapse; text-align:left;">
+          <thead>
+            <tr style="color:#2ed573; border-bottom:2px solid #4b6584;">
+              <th>Attendance ID</th>
+              <th>Bowler ID</th>
+              <th>Product ID</th>
+              <th>Session Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="unpaidSummaryBody">
+            <tr><td colspan="5" style="color:#a5b1c2;">Loading unpaid logs...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ⚙️ LINK THE TAIL SCRIPTS MODULE NATIVELY -->
+<?!= include('UI_Dashboard_Scripts'); ?>

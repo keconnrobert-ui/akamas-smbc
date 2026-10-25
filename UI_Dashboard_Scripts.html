@@ -1,0 +1,154 @@
+<!--
+  Akamas Short Mat Bowls Club — Executive Management Scripts
+  File: UI_Dashboard_Scripts.html
+  Version: 3.1.5-Production (Reconciled Tail Module)
+-->
+<script>
+(function(global) {
+  'use strict';
+
+  /**
+   * 💵 COMPLETE CASHIER TERMINAL FLUID PROCESSING
+   * Plugs directly into the dynamic layout grids to display unpaid attendees.
+   */
+  global.loadCashierViewTail = function() {
+    var tbody = document.getElementById('unpaidSummaryBody');
+    if (!tbody) return;
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (!res || !res.ok) {
+          tbody.innerHTML = '<tr><td colspan="5" style="color:#ff4757;">Failed to sync attendance logs.</td></tr>';
+          return;
+        }
+        
+        var records = res.data;
+        var html = '';
+        var count = 0;
+
+        records.forEach(function(record) {
+          // Cross-reference checking for UNPAID status parameters
+          if (record.PAYMENTSTATUS === "UNPAID" || record[7] === "UNPAID") {
+            count++;
+            var tId = record.TRANSACTION_ID || record[0];
+            var bId = record.BOWLER_ID || record[1];
+            var pId = record.PRODUCT_ID || record[2];
+            var sDate = record.SESSION_DATE ? new Date(record.SESSION_DATE).toLocaleDateString('en-GB') : '-';
+            
+            html += '<tr>' +
+                    '  <td><strong>' + tId + '</strong></td>' +
+                    '  <td>' + bId + '</td>' +
+                    '  <td>' + sDate + '</td>' +
+                    '  <td>' + pId + '</td>' +
+                    '  <td><span class="status-badge status-suspended">UNPAID</span></td>' +
+                    '</tr>';
+          }
+        });
+
+        if (count === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="color:#2ed573; text-align:center; padding:20px;">All clear! No unpaid attendees remaining.</td></tr>';
+        } else {
+          tbody.innerHTML = html;
+        }
+      })
+      .apiDispatch({ action: "GET_PANEL_ATTENDANCE" });
+  };
+
+  /**
+   * 📊 PURE CASH-BASIS FINANCIAL REPORT GENERATOR
+   * Adheres strictly to the signed-value accounting model (no Math.abs conversions).
+   */
+  global.generateSignedIncomeReport = function() {
+    var container = document.getElementById('reportSummaryContainer');
+    if (!container) return;
+    container.innerHTML = '<p style="color:#a5b1c2;">Summing signed ledger matrix rows...</p>';
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (!res || !res.ok) {
+          container.innerHTML = '<p style="color:#ff4757;">Report generation aborted.</p>';
+          return;
+        }
+
+        var transactions = res.data;
+        var salesTotal = 0;
+        var costsTotal = 0;
+
+        transactions.slice(1).forEach(function(txn) {
+          var amount = parseFloat(txn[7]) || 0; // Column 8 contains SIGNEDAMOUNT
+          if (amount >= 0) {
+            salesTotal += amount;
+          } else {
+            costsTotal += amount; // Signed values remain naturally negative expenses
+          }
+        });
+
+        var netIncome = salesTotal + costsTotal;
+        
+        container.innerHTML = 
+          '<div style="background:#1e222b; padding:20px; border-radius:8px; border:1px solid #4b6584;">' +
+          '  <h4 style="margin-top:0; color:#2ed573;">Authoritative Financial Statement</h4>' +
+          '  <p>Accumulated Gross Sales (RCP): <span class="positive" style="font-weight:bold;">' + formatCurrency(salesTotal) + '</span></p>' +
+          '  <p>Accumulated Costs & Expenses (COS): <span class="negative" style="font-weight:bold;">' + formatCurrency(costsTotal) + '</span></p>' +
+          '  <hr style="border-color:#4b6584; margin:15px 0;">' +
+          '  <p style="font-size:16px;"><strong>Net Cash Income Position:</strong> <span style="font-weight:bold; color:' + (netIncome >= 0 ? '#2ed573' : '#ff4757') + ';">' + formatCurrency(netIncome) + '</span></p>' +
+          '</div>';
+      })
+      .apiDispatch({ action: "GET_PANEL_LEDGER" });
+  };
+
+  /**
+   * 🔍 DETAILED CORE MEMBER UPDATE DISPATCHER
+   * Packages input fields cleanly to bypass the dynamic array conversion lock.
+   */
+  global.saveMember = function(event) {
+    if (event) event.preventDefault();
+    showLoadingSpinner(true);
+
+    var memberPayload = {
+      MEMBERID: document.getElementById('memberForm').dataset.memberid || null,
+      FULLNAME: document.getElementById('memberFullName').value.trim(),
+      EMAIL: document.getElementById('memberEmail').value.trim(),
+      TELEPHONE: document.getElementById('memberPhone').value.trim(),
+      STATUS: document.getElementById('memberStatus').value,
+      PRODUCTID: document.getElementById('memberProductid').value,
+      ACTIVE: document.getElementById('memberActive').checked ? "TRUE" : "FALSE"
+    };
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        showLoadingSpinner(false);
+        if (res && res.ok) {
+          alert('Success: Bowler file records updated.');
+          closeModal('memberFormModal');
+          loadPanel('members');
+        } else {
+          alert('Error: ' + res.message);
+        }
+      })
+      .apiDispatch({ action: "SAVE_MEMBER", payload: memberPayload });
+  };
+
+  /**
+   * 🎛️ SYSTEM COMMON MODAL OVERLAYS
+   */
+  global.closeModal = function(id) {
+    var modal = document.getElementById(id);
+    if (modal) modal.style.display = 'none';
+  };
+
+  global.showLoadingSpinner = function(visible) {
+    var spinner = document.getElementById('smbcSpinner');
+    if (spinner) spinner.style.display = visible ? 'flex' : 'none';
+  };
+
+  global.showAlert = function(title, message, type) {
+    alert(title + "\n" + message);
+  };
+
+  function formatCurrency(amount) {
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'EUR' }).format(amount);
+  }
+
+})(window);
+</script>

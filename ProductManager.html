@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>ASMBC - Isolated Product Manager Test</title>
+  <style>
+    body { font-family: sans-serif; background: #f1f5f9; padding: 20px; color: #1e293b; }
+    .card { background: #fff; padding: 20px; border-radius: 8px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th, td { padding: 8px 12px; border-bottom: 1px solid #cbd5e1; text-align: left; font-size: 13px; }
+    tr:hover { background: #f8fafc; cursor: pointer; }
+    .form-group { margin-bottom: 12px; }
+    label { display: block; font-size: 11px; font-weight: bold; text-transform: uppercase; color: #475569; margin-bottom: 4px; }
+    input, select { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; box-sizing: border-box; }
+    button { background: #0f766e; color: white; border: none; padding: 10px 16px; font-weight: bold; border-radius: 4px; cursor: pointer; }
+    #status-msg { margin-top: 10px; font-size: 12px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Isolated Product Manager Diagnostic</h2>
+    <table>
+      <thead><tr><th>SKU</th><th>Name</th><th>Price</th><th>Active</th></tr></thead>
+      <tbody id="prod-tbody"><tr><td colspan="4">Loading...</td></tr></tbody>
+    </table>
+    
+    <div class="form-group"><label>Selected SKU</label><input type="text" id="t-sku" readonly style="background:#e2e8f0;"></div>
+    <div class="form-group"><label>Item Name</label><input type="text" id="t-name"></div>
+    <div class="form-group"><label>Price (€)</label><input type="number" id="t-price"></div>
+    <div class="form-group">
+      <label>Availability</label>
+      <select id="t-active"><option value="true">TRUE (Active)</option><option value="false">FALSE (Inactive)</option></select>
+    </div>
+    <button onclick="commitIsolationTest()">Save Isolated Product</button>
+    <div id="status-msg"></div>
+  </div>
+
+  <script>
+    let cache = [];
+    window.onload = loadList;
+
+    function loadList() {
+      google.script.run.withSuccessHandler(res => {
+        if (!res.success) { document.getElementById('status-msg').innerText = "Err: " + res.error; return; }
+        cache = res.products;
+        const tb = document.getElementById('prod-tbody');
+        tb.innerHTML = "";
+        cache.forEach((p, idx) => {
+          tb.innerHTML += `<tr onclick="selectProd(${idx})">
+            <td><strong>${p.id}</strong></td><td>${p.name}</td><td>€${p.price.toFixed(2)}</td><td>${p.isActive}</td>
+          </tr>`;
+        });
+      }).getProductsStandalone();
+    }
+
+    function selectProd(i) {
+      const p = cache[i];
+      document.getElementById('t-sku').value = p.id;
+      document.getElementById('t-name').value = p.name;
+      document.getElementById('t-price').value = p.price;
+      document.getElementById('t-active').value = p.isActive ? "true" : "false";
+      document.getElementById('status-msg').innerText = "";
+    }
+
+    function commitIsolationTest() {
+      const sku = document.getElementById('t-sku').value;
+      if (!sku) { alert("Select a row first."); return; }
+      const name = document.getElementById('t-name').value;
+      const price = document.getElementById('t-price').value;
+      const activeFlag = document.getElementById('t-active').value === "true";
+
+      document.getElementById('status-msg').innerText = "Saving...";
+      google.script.run.withSuccessHandler(res => {
+        if (res.success) {
+          document.getElementById('status-msg').style.color = "green";
+          document.getElementById('status-msg').innerText = res.message;
+          loadList();
+        } else {
+          document.getElementById('status-msg').style.color = "red";
+          document.getElementById('status-msg').innerText = "Failed: " + res.error;
+        }
+      }).saveProductStandalone(sku, name, price, activeFlag);
+    }
+  </script>
+</body>
+</html>

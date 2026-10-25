@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Akamas SMBC - Reception QR Display</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1A365D 0%, #0f172a 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      color: #1e293b;
+    }
+    
+    .reception-display {
+      background-color: #ffffff;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 30px;
+    }
+    
+    .header {
+      border-bottom: 4px solid #1A365D;
+      padding-bottom: 20px;
+      width: 100%;
+    }
+    
+    .header h1 {
+      font-size: 36px;
+      font-weight: 700;
+      color: #1A365D;
+      margin-bottom: 8px;
+      letter-spacing: 0.02em;
+    }
+    
+    .header p {
+      font-size: 18px;
+      color: #475569;
+      margin-bottom: 4px;
+    }
+    
+    .session-info {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+    
+    .info-box {
+      background-color: #f1f5f9;
+      border: 2px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 12px 20px;
+      min-width: 150px;
+    }
+    
+    .info-box .label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+    
+    .info-box .value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1A365D;
+    }
+    
+    .qr-container {
+      background-color: #f8fafc;
+      border: 4px dashed #cbd5e1;
+      border-radius: 16px;
+      padding: 30px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .qr-container img {
+      max-width: 350px;
+      height: auto;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      background: #ffffff;
+      padding: 8px;
+    }
+    
+    .qr-loading {
+      font-size: 18px;
+      color: #64748b;
+      font-weight: 600;
+    }
+    
+    .qr-error {
+      font-size: 16px;
+      color: #991b1b;
+      font-weight: 600;
+      padding: 20px;
+      background-color: #fee2e2;
+      border-radius: 8px;
+      border: 1px solid #fca5a5;
+    }
+    
+    .instruction {
+      background-color: #ecfdf5;
+      border: 2px solid #86efac;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 14px;
+      color: #166534;
+      line-height: 1.6;
+      width: 100%;
+    }
+    
+    .instruction strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+    
+    .footer {
+      font-size: 11px;
+      color: #94a3b8;
+      padding-top: 12px;
+      border-top: 1px solid #e2e8f0;
+      width: 100%;
+    }
+    
+    .status-badge {
+      display: inline-block;
+      background-color: #d1fae5;
+      color: #065f46;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-top: 8px;
+    }
+    
+    /* Auto-refresh animation */
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    .qr-container img {
+      animation: fadeIn 0.5s ease-in;
+    }
+    
+    /* iPad/TV optimization */
+    @media (min-width: 1024px) {
+      .reception-display {
+        padding: 60px;
+        max-width: 800px;
+      }
+      
+      .header h1 {
+        font-size: 48px;
+      }
+      
+      .qr-container img {
+        max-width: 450px;
+      }
+      
+      .instruction {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="reception-display">
+    <div class="header">
+      <h1>🎳 Akamas SMBC</h1>
+      <p>Member Check-In Portal</p>
+    </div>
+    
+    <div class="session-info">
+      <div class="info-box">
+        <div class="label">Today's Date</div>
+        <div class="value" id="display-date">—</div>
+      </div>
+      <div class="info-box">
+        <div class="label">Day of Week</div>
+        <div class="value" id="display-day">—</div>
+      </div>
+      <div class="info-box">
+        <div class="label">Time Generated</div>
+        <div class="value" id="display-time">—</div>
+      </div>
+    </div>
+    
+    <div class="qr-container">
+      <div id="qr-display">
+        <div class="qr-loading">📱 Loading QR Code...</div>
+      </div>
+    </div>
+    
+    <div class="instruction">
+      <strong>👉 How to Check In:</strong>
+      Members scan this QR code with their phone camera, enter their Member ID (or phone/email), and follow the prompts to gain entry or pay a day pass.
+    </div>
+    
+    <div class="footer">
+      <p>⏱️ QR refreshes automatically every 60 seconds</p>
+      <p id="generated-info">Generated: —</p>
+      <span class="status-badge" id="status-live">🟢 LIVE</span>
+    </div>
+  </div>
+  
+  <script>
+    // Configuration
+    const REFRESH_INTERVAL = 60000; // 60 seconds
+    
+    function loadQRCode() {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          if (data && data.success) {
+            // Update QR image
+            const qrDisplay = document.getElementById('qr-display');
+            qrDisplay.innerHTML = `<img src="${data.qrUrl}" alt="Daily Session QR Code" loading="lazy">`;
+            
+            // Update info boxes
+            document.getElementById('display-date').innerText = data.date || '—';
+            document.getElementById('display-day').innerText = data.day || '—';
+            document.getElementById('display-time').innerText = formatTime(new Date(data.generatedAt)) || '—';
+            document.getElementById('generated-info').innerText = `Generated: ${formatDateTime(new Date(data.generatedAt))}`;
+            
+            // Update status
+            document.getElementById('status-live').innerText = '🟢 LIVE';
+            document.getElementById('status-live').style.backgroundColor = '#d1fae5';
+            document.getElementById('status-live').style.color = '#065f46';
+          } else {
+            showError('Failed to load QR code. ' + (data.error || 'Unknown error.'));
+          }
+        })
+        .withFailureHandler(function(err) {
+          showError('Network error: ' + err.message);
+        })
+        .getDailySessionQR();
+    }
+    
+    function showError(message) {
+      const qrDisplay = document.getElementById('qr-display');
+      qrDisplay.innerHTML = `<div class="qr-error">❌ ${message}</div>`;
+      document.getElementById('status-live').innerText = '🔴 ERROR';
+      document.getElementById('status-live').style.backgroundColor = '#fee2e2';
+      document.getElementById('status-live').style.color = '#991b1b';
+    }
+    
+    function formatTime(date) {
+      return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+    
+    function formatDateTime(date) {
+      return date.toLocaleString('en-GB', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+    
+    // Initial load
+    window.onload = function() {
+      loadQRCode();
+      // Refresh every 60 seconds
+      setInterval(loadQRCode, REFRESH_INTERVAL);
+    };
+  </script>
+</body>
+</html>

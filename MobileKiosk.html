@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ASMBC - Member Check-In Portal</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #1A365D 0%, #0f172a 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 16px; color: #1e293b; }
+    
+    .mobile-card { background-color: #ffffff; width: 100%; max-width: 420px; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); overflow: hidden; display: flex; flex-direction: column; }
+    .brand-header { padding: 24px 20px; background-color: #1A365D; text-align: center; color: #ffffff; border-bottom: 4px solid #10b981; }
+    .brand-header h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.03em; }
+    .brand-header p { font-size: 12px; color: #93c5fd; margin-top: 4px; }
+    
+    .portal-body { padding: 24px 20px; flex-grow: 1; }
+    
+    /* WELCOME & YELLOW LINK BANNER */
+    .welcome-banner { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; text-align: center; margin-bottom: 20px; }
+    .welcome-banner h3 { font-size: 14px; color: #1A365D; margin-bottom: 4px; }
+    .welcome-banner p { font-size: 12px; color: #475569; margin-bottom: 10px; }
+    .yellow-action-link { display: inline-block; background-color: #facc15; color: #1e293b; font-weight: 700; font-size: 13px; padding: 10px 18px; border-radius: 8px; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: background 0.2s; }
+    .yellow-action-link:hover { background-color: #eab308; }
+
+/* QR CODE WIDGET */
+  .qr-widget { text-align: center; padding: 12px; background: #fff; border: 1px dashed #cbd5e1; border-radius: 10px; margin-bottom: 20px; }
+  .qr-widget img { width: 110px; height: 110px; padding: 4px; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; }
+  .qr-widget span { display: block; font-size: 11px; color: #64748b; margin-top: 6px; font-weight: 600; }
+  
+  #qr-access-card { margin-bottom: 25px; padding: 15px; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; text-align: center; }
+</style>
+</head>
+<body>
+  <div class="mobile-card">
+    <div class="brand-header">
+      <h1>Akamas Bowls Club</h1>
+      <p>Session Pass: <strong><?= sessionDate ?></strong></p>
+    </div>
+    
+    <div class="portal-body">
+      <!-- SESSION QUICK-SCAN QR ACCESS BLOCK -->
+      <div id="qr-access-card">
+        <p style="font-size: 11px; font-weight: 700; color: #1A365D; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Scan to Open on Smartphone</p>
+        <img id="dynamic-qr-img" src="" alt="Session Check-in QR Code" style="width: 130px; height: 130px; border-radius: 6px; border: 2px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.1); background: #fff; padding: 4px;">
+        <p style="font-size: 10px; color: #64748b; margin-top: 6px;">Point iPhone camera at code</p>
+      </div>
+
+    /* INPUT FIELDS */
+    .instruction-text { font-size: 13px; line-height: 1.4; color: #475569; margin-bottom: 16px; text-align: center; }
+    .input-wrapper { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .input-wrapper label { font-size: 11px; font-weight: 700; color: #1A365D; text-transform: uppercase; letter-spacing: 0.05em; }
+    .input-wrapper input { padding: 12px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 15px; outline: none; width: 100%; color: #1e293b; font-weight: 600; text-align: center; }
+    .input-wrapper input:focus { border-color: #1A365D; background-color: #f8fafc; }
+    
+    .action-btn { width: 100%; padding: 12px; background: linear-gradient(135deg, #1A365D 0%, #2A4365 100%); color: #ffffff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; text-transform: uppercase; cursor: pointer; }
+    .action-btn.secondary { background-color: #475569; }
+    .action-btn.paypal-btn { background: linear-gradient(135deg, #0079c1 0%, #00457c 100%); margin-bottom: 10px; }
+
+    /* STATUS PANELS */
+    .status-panel { display: none; text-align: center; padding: 15px 5px; flex-direction: column; align-items: center; gap: 12px; }
+    .status-icon { font-size: 40px; }
+    .status-title { font-size: 18px; font-weight: 700; }
+    .status-desc { font-size: 13px; color: #475569; line-height: 1.5; }
+    
+    .status-panel.success .status-title { color: #065f46; }
+    .status-panel.payment .status-title { color: #b45309; }
+    .status-panel.guest .status-title { color: #1A365D; }
+    .status-panel.error .status-title { color: #991b1b; }
+    .status-panel.paypal-sim .status-title { color: #00457c; }
+
+    .payment-choice-box { width: 100%; margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+    .footer-note { padding: 12px; text-align: center; font-size: 10px; color: #94a3b8; background-color: #f8fafc; border-top: 1px solid #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="mobile-card">
+    <div class="brand-header">
+      <h1>Akamas Bowls Club</h1>
+      <p>Session Pass: <strong><?= sessionDate ?></strong></p>
+    </div>
+    
+    <div class="portal-body">
+      <!-- WELCOME BANNER WITH YELLOW LINK FOR SMARTPHONE USERS -->
+      <div id="flow-welcome-banner" class="welcome-banner">
+        <h3>Welcome to Rink Registration</h3>
+        <p>Scan the code or tap below on your mobile device to open this session on your phone:</p>
+        <a id="yellow-mobile-link" href="<?= kioskUrl ?>" class="yellow-action-link" target="_top">📱 Open Check-In on My Phone</a>
+      </div>
+
+      <!-- ENTRANCE QR CODE BOX -->
+      <div class="qr-widget">
+        <img id="dynamic-qr-img" src="" alt="Session QR Code">
+        <span>Scan with iPhone Camera</span>
+      </div>
+
+      <!-- VIEW PANEL 1: INPUT IDENTIFIER -->
+      <div id="flow-input-container">
+        <p class="instruction-text">Enter your <strong>Membership No</strong> (e.g. MBR001), <strong>Telephone</strong>, or <strong>Email</strong>:</p>
+        <div class="input-wrapper">
+          <input type="text" id="member-search-token" placeholder="MBR001 or +357 96 XXXXXX" autocomplete="off" autofocus>
+        </div>
+        <button id="submit-action-trigger" onclick="processMobileCheckInSubmission()" class="action-btn">Identify & Check In</button>
+      </div>
+
+      <!-- VIEW PANEL 2: VERIFIED PAID SUCCESS -->
+      <div id="flow-success-panel" class="status-panel success">
+        <div class="status-icon">✅</div>
+        <div class="status-title">Rink Entry Approved</div>
+        <p id="success-message-text" class="status-desc"></p>
+        <button onclick="resetCheckInPortalForm()" class="action-btn secondary">Done / Next Bowler</button>
+      </div>
+
+      <!-- VIEW PANEL 3: PAYMENT REQUIRED -> CHOOSE CASH OR PAYPAL -->
+      <div id="flow-payment-panel" class="status-panel payment">
+        <div class="status-icon">💶</div>
+        <div class="status-title">Pass Renewal / Fee Due</div>
+        <p id="payment-message-text" class="status-desc"></p>
+        
+        <div class="payment-choice-box">
+          <button onclick="launchSimulatedPayPalPayment()" class="action-btn paypal-btn">💳 Pay Now via PayPal (Simulated)</button>
+          <button onclick="selectCashPaymentRedirect()" class="action-btn secondary">💵 Pay Cash at Cashier Desk</button>
+        </div>
+      </div>
+
+      <!-- VIEW PANEL 4: SIMULATED PAYPAL TRANSACTION SCREEN -->
+      <div id="flow-paypal-sim-panel" class="status-panel paypal-sim">
+        <div class="status-icon">🅿️</div>
+        <div class="status-title">PayPal Sandbox Simulator</div>
+        <p class="status-desc">Illustrating merchant gateway settlement for <strong id="paypal-sim-bowler">Member</strong> (<span id="paypal-sim-sku">ST004</span> — <strong id="paypal-sim-amount">€7.00</strong>).</p>
+        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px; font-size:12px; color:#1e40af; width:100%; text-align:left;">
+          <p><strong>Merchant:</strong> Akamas SMBC Club</p>
+          <p><strong>Status:</strong> <span style="color:#15803d; font-weight:bold;">APPROVED (Simulated)</span></p>
+          <p><strong>Txn Token:</strong> <code>PP-SIM-<?= Math.floor(Math.random()*900000+100000) ?></code></p>
+        </div>
+        <button onclick="completeSimulatedPayPalSettlement()" class="action-btn" style="background:#059669; margin-top:8px;">Complete & Seal Ledger Payment</button>
+        <button onclick="resetCheckInPortalForm()" class="action-btn secondary" style="margin-top:4px;">Cancel</button>
+      </div>
+
+      <!-- VIEW PANEL 5: CASHIER REDIRECT CONFIRMATION -->
+      <div id="flow-cashier-redirect-panel" class="status-panel payment">
+        <div class="status-icon">🚶‍♂️</div>
+        <div class="status-title">Proceed to Cashier</div>
+        <p class="status-desc">Your attendance has been logged as <strong>UNPAID / Pending</strong>. Please hand cash to the On-Duty Cashier to activate your receipt.</p>
+        <button onclick="resetCheckInPortalForm()" class="action-btn secondary">Return to Start</button>
+      </div>
+
+      <!-- VIEW PANEL 6: WELCOME GUEST / NEW VISITOR -->
+      <div id="flow-guest-panel" class="status-panel guest">
+        <div class="status-icon">👋</div>
+        <div class="status-title">Welcome to Akamas SMBC!</div>
+        <p id="guest-message-text" class="status-desc"></p>
+        <button onclick="resetCheckInPortalForm()" class="action-btn">Return to Kiosk</button>
+      </div>
+
+      <!-- VIEW PANEL 7: HARD EXCLUSION ERROR -->
+      <div id="flow-error-panel" class="status-panel error">
+        <div class="status-icon">❌</div>
+        <div class="status-title">Access Prohibited</div>
+        <p id="error-message-text" class="status-desc"></p>
+        <button onclick="resetCheckInPortalForm()" class="action-btn secondary">Return to Kiosk</button>
+      </div>
+    </div>
+    <div class="footer-note">ASMBC Daily Session Gateway • Date: <?= sessionDate ?></div>
+  </div>
+  <script>
+    const TARGET_KIOSK_URL = "<?= kioskUrl ?>";
+    const SESSION_DATE_STR = "<?= sessionDate ?>";
+    
+    // Hold temporary state when payment branching occurs
+    let pendingPaymentState = { memberId: "", productId: "", amount: 0, bowlerName: "" };
+
+    window.onload = function() {
+      // Encode URL for QR generator
+      const encodedUrl = encodeURIComponent(TARGET_KIOSK_URL);
+      document.getElementById('dynamic-qr-img').src = `https://qrserver.com{encodedUrl}`;
+      document.getElementById('yellow-mobile-link').href = TARGET_KIOSK_URL;
+    };
+
+    function resetCheckInPortalForm() {
+      const panels = [
+        'flow-success-panel', 'flow-payment-panel', 'flow-paypal-sim-panel', 
+        'flow-cashier-redirect-panel', 'flow-guest-panel', 'flow-error-panel'
+      ];
+      panels.forEach(id => document.getElementById(id).style.display = 'none');
+      document.getElementById('flow-input-container').style.display = 'block';
+      document.getElementById('flow-welcome-banner').style.display = 'block';
+      document.getElementById('member-search-token').value = "";
+      document.getElementById('submit-action-trigger').disabled = false;
+      pendingPaymentState = { memberId: "", productId: "", amount: 0, bowlerName: "" };
+    }
+
+    function processMobileCheckInSubmission() {
+      const displayToken = document.getElementById('member-search-token').value.trim();
+      if (!displayToken) { alert("Please input an identification value."); return; }
+      
+      const normalizedToken = displayToken.replace(/\s+/g, '').toUpperCase();
+      document.getElementById('submit-action-trigger').disabled = true;
+      
+      google.script.run
+        .withSuccessHandler(function(data) {
+          document.getElementById('flow-welcome-banner').style.display = 'none';
+          
+          if (data && data.success) {
+            document.getElementById('success-message-text').innerText = data.message;
+            document.getElementById('flow-success-panel').style.display = 'flex';
+          } else {
+            const resultData = data || { panel: "guest", reason: "Connection state anomaly." };
+            if (resultData.panel === "payment") {
+              // Capture context for Cash vs PayPal decision
+              pendingPaymentState.memberId = resultData.memberId || normalizedToken;
+              pendingPaymentState.productId = resultData.productId || "ST004";
+              pendingPaymentState.amount = resultData.amount || 7.00;
+              pendingPaymentState.bowlerName = resultData.bowlerName || normalizedToken;
+
+              document.getElementById('payment-message-text').innerText = resultData.reason;
+              document.getElementById('flow-payment-panel').style.display = 'flex';
+            } else if (resultData.panel === "guest") {
+              document.getElementById('guest-message-text').innerHTML = "Record not matched in active database. Please see the On-Duty Cashier at the main desk.";
+              document.getElementById('flow-guest-panel').style.display = 'flex';
+            } else {
+              document.getElementById('error-message-text').innerText = resultData.reason || "Access Denied.";
+              document.getElementById('flow-error-panel').style.display = 'flex';
+            }
+          }
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('error-message-text').innerText = "Transmission timeout: " + err.message;
+          document.getElementById('flow-error-panel').style.display = 'flex';
+        })
+        .processMobileCheckInGate(normalizedToken);
+    }
+
+    // BRANCH A: CASH PAYMENT -> REDIRECT TO DESK
+    function selectCashPaymentRedirect() {
+      document.getElementById('flow-payment-panel').style.display = 'none';
+      document.getElementById('flow-cashier-redirect-panel').style.display = 'flex';
+    }
+
+    // BRANCH B: PAYPAL SIMULATOR SCREEN
+    function launchSimulatedPayPalPayment() {
+      document.getElementById('flow-payment-panel').style.display = 'none';
+      document.getElementById('paypal-sim-bowler').innerText = pendingPaymentState.bowlerName;
+      document.getElementById('paypal-sim-sku').innerText = pendingPaymentState.productId;
+      document.getElementById('paypal-sim-amount').innerText = "€" + Number(pendingPaymentState.amount).toFixed(2);
+      document.getElementById('flow-paypal-sim-panel').style.display = 'flex';
+    }
+
+    // COMMIT SIMULATED PAYPAL TO LEDGER
+    function completeSimulatedPayPalSettlement() {
+      const btn = document.querySelector('#flow-paypal-sim-panel .action-btn');
+      btn.disabled = true;
+      btn.innerText = "Settling with PayPal Sandbox...";
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          btn.disabled = false;
+          btn.innerText = "Complete & Seal Ledger Payment";
+          document.getElementById('flow-paypal-sim-panel').style.display = 'none';
+
+          if (res && res.success) {
+            document.getElementById('success-message-text').innerText = `PayPal Settlement Approved! Receipt ${res.receiptID} issued. Welcome to the rink!`;
+            document.getElementById('flow-success-panel').style.display = 'flex';
+          } else {
+            document.getElementById('error-message-text').innerText = "Settlement failed: " + (res.error || "Unknown error");
+            document.getElementById('flow-error-panel').style.display = 'flex';
+          }
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          btn.innerText = "Complete & Seal Ledger Payment";
+          document.getElementById('error-paypal-sim-panel').style.display = 'none';
+          document.getElementById('error-message-text').innerText = "Network fault: " + err.message;
+          document.getElementById('flow-error-panel').style.display = 'flex';
+        })
+        .processManualCashierReceipt(
+          pendingPaymentState.memberId, 
+          pendingPaymentState.productId, 
+          pendingPaymentState.amount, 
+          "PayPal", 
+          "SIMULATED_PAYPAL_GATEWAY_TXN"
+        );
+    }
+  </script>
+</body>
+</html>
