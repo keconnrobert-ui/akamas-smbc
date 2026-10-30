@@ -5,6 +5,28 @@
  * Role: Atomic transaction recording, dual-anchor audit (LEDGERID + SOURCETXNID + TXNHASH)
  */
 
+// Compatibility wrapper for legacy API_transactionLogic.js calls.
+function generateTXNHASH(sourceTab, sourceTxnId, sourceId, userEmail, txnDate, txnTime, signedAmount, productId, txnType) {
+  return RF_generateTXNHASH(sourceTab, sourceTxnId, sourceId, userEmail, txnDate, txnTime, signedAmount, productId, txnType);
+}
+
+function validateTXNHASH(row, userEmail) {
+  return RF_validateTXNHASH(row, userEmail);
+}
+
+function generateLedgerId() {
+  return RF_generateLedgerId();
+}
+
+function generateSourceTxnId(prefix) {
+  return RF_generateSourceTxnId(prefix);
+}
+
+function recordToLedger(txn) {
+  return RF_recordToLedger(txn);
+}
+
+
 /**
  * Generate SHA256 TXNHASH for transaction jigsaw integrity
  * Canonical: SOURCETXNID + PAYMENT_DATE + AMOUNT + PARTY_ID + CATEGORY
@@ -15,19 +37,7 @@
  * @param {string} category - Transaction category
  * @returns {string} SHA256 hash (64-char hex)
  */
-function generateTXNHASH(sourceTxnId, paymentDate, amount, partyId, category) {
-  const paymentDateStr = Utilities.formatDate(paymentDate, "GMT", "yyyy-MM-dd");
-  const canonical = `${sourceTxnId}|${paymentDateStr}|${amount}|${partyId}|${category}`;
-  
-  const signature = Utilities.computeDigest(
-    Utilities.DigestAlgorithm.SHA_256,
-    canonical
-  );
-  
-  return signature
-    .map(byte => ("0" + (byte & 0xff).toString(16)).slice(-2))
-    .join("");
-}
+
 
 /**
  * Validate TXNHASH integrity
@@ -40,10 +50,6 @@ function generateTXNHASH(sourceTxnId, paymentDate, amount, partyId, category) {
  * @param {string} category - Category
  * @returns {boolean} True if hash matches
  */
-function validateTXNHASH(storedHash, sourceTxnId, paymentDate, amount, partyId, category) {
-  const computedHash = generateTXNHASH(sourceTxnId, paymentDate, amount, partyId, category);
-  return storedHash === computedHash;
-}
 
 /**
  * Get next LEDGERID from SystemConfig
@@ -156,19 +162,6 @@ function recordToLedger(txn) {
  * @returns {string} SHA256 hash (64-char hex)
  */
 
-function generateTXNHASH(sourceTxnId, paymentDate, amount, partyId, category) {
-  const paymentDateStr = Utilities.formatDate(paymentDate, "GMT", "yyyy-MM-dd");
-  const canonical = `${sourceTxnId}|${paymentDateStr}|${amount}|${partyId}|${category}`;
-  
-  const signature = Utilities.computeDigest(
-    Utilities.DigestAlgorithm.SHA_256,
-    canonical
-  );
-  
-  return signature
-    .map(byte => ("0" + (byte & 0xff).toString(16)).slice(-2))
-    .join("");
-}
 
 /**
  * Validate TXNHASH integrity
@@ -181,10 +174,6 @@ function generateTXNHASH(sourceTxnId, paymentDate, amount, partyId, category) {
  * @param {string} category - Category
  * @returns {boolean} True if hash matches
  */
-function validateTXNHASH(storedHash, sourceTxnId, paymentDate, amount, partyId, category) {
-  const computedHash = generateTXNHASH(sourceTxnId, paymentDate, amount, partyId, category);
-  return storedHash === computedHash;
-}
 
 /**
  * Get next LEDGERID from SystemConfig
