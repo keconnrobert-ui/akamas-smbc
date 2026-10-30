@@ -527,39 +527,6 @@ function calculateNextMatFeeDue(productCode, paymentDate) {
  * @param {string} prefix - Prefix (RCP, EXP, COGS)
  * @returns {string} Source transaction ID (e.g., "RCP000001")
  */
-function generateSourceTxnId(prefix = "RCP") {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const configSheet = ss.getSheetByName("System_Config");
-  
-  if (!configSheet) {
-    throw new Error("System_Config sheet not found");
-  }
-
-  const configKey = `NEXT${prefix}ID`;
-  const data = configSheet.getDataRange().getValues();
-  let currentId = null;
-  let idRowIndex = -1;
-
-  for (let i = 0; i < data.length; i++) {
-    if (data[i][0] === configKey) {
-      currentId = data[i][1];
-      idRowIndex = i + 1;
-      break;
-    }
-  }
-
-  if (!currentId) {
-    throw new Error(`${configKey} not found in System_Config`);
-  }
-  const numericPart = parseInt(currentId.replace(/\D/g, ""), 10);
-  const newNumeric = numericPart + 1;
-  const newId = prefix + String(newNumeric).padStart(6, "0");
-
-  // Update in sheet
-  configSheet.getRange(idRowIndex, 2).setValue(newId);
-
-  return currentId;
-}
 
 /**
  * Validate transaction consistency (TX999999 audit logic stub)
