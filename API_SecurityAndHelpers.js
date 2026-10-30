@@ -4,6 +4,36 @@
  * Generated: 2026-10-20
  */
 
+// Compatibility wrapper for legacy API_SecurityAndHelpers.js calls.
+function generateCSRFToken(userEmail) {
+  return RF_generateCSRFToken(userEmail);
+}
+
+function validateCSRFToken(token, userEmail) {
+  return RF_validateCSRFToken(token, userEmail);
+}
+
+function enforceRateLimit(userEmail, options) {
+  return RF_enforceRateLimit(userEmail, options);
+}
+
+function checkIdempotencyKey(idempotencyKey) {
+  return RF_checkIdempotencyKey(idempotencyKey);
+}
+
+function cacheIdempotencyKey(idempotencyKey, result) {
+  return RF_cacheIdempotencyKey(idempotencyKey, result);
+}
+
+function getUserRole(userEmail) {
+  return RF_getUserRole(userEmail);
+}
+
+function generateSourceTxnId(prefix) {
+  return RF_generateSourceTxnId(prefix);
+}
+
+
 // ==================== CRYPTOGRAPHY ====================
 
 /**
@@ -76,25 +106,7 @@ function storeIdempotencyKey(idempotencyKey, ledgerId, txnHash) {
   ]);
 }
 
-/**
- * Checks for existing idempotency key
- * @param {string} idempotencyKey - UUID
- * @param {string} sourceSheet - 'Ledger', 'Purchases', etc.
- * @returns {Object|null} {ledgerId, txnHash} or null
- */
-function checkIdempotencyKey(idempotencyKey, sourceSheet) {
-  const configSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('System_Config');
-  const data = configSheet.getDataRange().getValues();
 
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === `IDEMPOTENCY_${idempotencyKey}`) {
-      const [ledgerId, txnHash] = data[i][1].split('|');
-      return { ledgerId, txnHash };
-    }
-  }
-
-  return null;
-}
 
 // ==================== RATE LIMITING ====================
 
@@ -241,28 +253,7 @@ function generateCounterId(counterKey, prefix) {
  * @param {string} userEmail - Session user email
  * @returns {string} CSRF token
  */
-function generateCSRFToken(userEmail) {
-  const timestamp = Math.floor(Date.now() / 1000);
-  const secretKey = PropertiesService.getScriptProperties().getProperty('CSRF_SECRET') || 'default-secret';
-  const payload = `${userEmail}|${timestamp}`;
-  const token = Utilities.computeHmacSha256Signature(payload, secretKey);
-  return Utilities.bytesToHex(token);
-}
 
-/**
- * Validates CSRF token from request
- * @param {string} userEmail - Session user email
- * @param {string} token - CSRF token from request
- * @param {number} maxAgeSeconds - Max token age (default 3600 = 1 hour)
- * @returns {boolean} Valid or invalid
- */
-function validateCSRFToken(userEmail, token, maxAgeSeconds = 3600) {
-  // In production, would validate timestamp and signature
-  // For now, simple regeneration check
-  const secretKey = PropertiesService.getScriptProperties().getProperty('CSRF_SECRET') || 'default-secret';
-  const expectedToken = generateCSRFToken(userEmail);
-  return token === expectedToken;
-}
 
 // ==================== LOCK MANAGEMENT ====================
 
