@@ -20,6 +20,44 @@
  * Resolves the "validateRBAC_ is not defined" compiler step-clashing permanently.
  * Maps both names to your authoritative role-based access engine.
  */
+
+// Compatibility wrapper for legacy API_Gateway.js calls.
+function generateCSRFToken(userEmail) {
+  return RF_generateCSRFToken(userEmail);
+}
+
+function validateCSRFToken(token, userEmail) {
+  return RF_validateCSRFToken(token, userEmail);
+}
+
+function enforceRateLimit(userEmail, options) {
+  return RF_enforceRateLimit(userEmail, options);
+}
+
+function checkIdempotencyKey(idempotencyKey) {
+  return RF_checkIdempotencyKey(idempotencyKey);
+}
+
+function cacheIdempotencyKey(idempotencyKey, result) {
+  return RF_cacheIdempotencyKey(idempotencyKey, result);
+}
+
+function authorizeUserRole(userEmail, requiredRole) {
+  return RF_authorizeUserRole(userEmail, requiredRole);
+}
+
+function getUserRole(userEmail) {
+  return RF_getUserRole(userEmail);
+}
+
+function getSystemConfig(parameterKey) {
+  return RF_getSystemConfig(parameterKey);
+}
+
+function setSystemConfig(parameterKey, parameterValue, description) {
+  return RF_setSystemConfig(parameterKey, parameterValue, description);
+}
+
 function validateRBAC_(userRoleNum, minimumRequired) {
   return enforceRBAC_(userRoleNum, minimumRequired);
 }
@@ -223,66 +261,14 @@ function doPost(e) {
  * @param {string} userEmail - Active user email
  * @returns {string} Role: 'Manager', 'Cashier', 'Accountant', or 'Bowler'
  */
-function authorizeUserRole(userEmail) {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const usersSheet = ss.getSheetByName('Users');
-    if (!usersSheet) return 'Bowler';
-    
-    // Get column indices dynamically
-    const emailCol = getCatalogColumnIndex('Users', 'email');
-    const roleCol = getCatalogColumnIndex('Users', 'role');
-    const isActiveCol = getCatalogColumnIndex('Users', 'isActive');
-    
-    if (!emailCol || !roleCol || !isActiveCol) {
-      throw new Error('Users sheet schema incomplete');
-    }
-    
-    const data = usersSheet.getRange(2, 1, usersSheet.getLastRow() - 1, 3).getValues();
-    
-    for (let row of data) {
-      const rowEmail = (row[emailCol - 1] || '').toString().trim().toLowerCase();
-      const role = (row[roleCol - 1] || '').toString().trim();
-      const isActive = row[isActiveCol - 1];
-      
-      if (rowEmail === userEmail.toLowerCase() && isActive === true) {
-        return role;
-      }
-    }
-    
-    // Not found in Users sheet → default to Bowler
-    return 'Bowler';
-  } catch (err) {
-    Logger.log('authorizeUserRole error: ' + err.message);
-    return null;
-  }
-}
+
 
 /**
  * Generate CSRF token (base64-encoded SHA-256 of email + timestamp + secret)
  * @param {string} userEmail - User email
  * @returns {string} Base64-encoded CSRF token
  */
-function generateCSRFToken(userEmail) {
-  try {
-    const timestamp = Math.floor(Date.now() / 1000); // Unix timestamp
-    const secret = 'AKAMAS_BOWLS_CSRF_SECRET_v2'; // Fixed secret (in production, use external config)
-    const data = userEmail + '|' + timestamp + '|' + secret;
-    
-    // Compute SHA-256 digest and encode to base64
-    const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, data);
-    const token = Utilities.base64Encode(digest);
-    
-    // Cache token in PropertiesService with 1-hour TTL
-    const scriptProperties = PropertiesService.getScriptProperties();
-    scriptProperties.setProperty('CSRF_' + userEmail, token);
-    
-    return token;
-  } catch (err) {
-    Logger.log('generateCSRFToken error: ' + err.message);
-    return null;
-  }
-}
+
 
 /**
  * Validate CSRF token
@@ -290,25 +276,6 @@ function generateCSRFToken(userEmail) {
  * @param {string} userEmail - User email
  * @returns {boolean} True if valid
  */
-function validateCSRFToken(token, userEmail) {
-  try {
-    if (!token || token.trim() === '') return false;
-    
-    const scriptProperties = PropertiesService.getScriptProperties();
-    const cachedToken = scriptProperties.getProperty('CSRF_' + userEmail);
-    
-    if (!cachedToken) {
-      Logger.log('CSRF: No cached token for ' + userEmail);
-      return false;
-    }
-    
-    // Constant-time comparison (prevent timing attacks)
-    return constantTimeCompare(token, cachedToken);
-  } catch (err) {
-    Logger.log('validateCSRFToken error: ' + err.message);
-    return false;
-  }
-}
 
 /**
  * Constant-time string comparison (prevent timing attacks)
@@ -382,37 +349,12 @@ function enforceRateLimit(userEmail) {
  * @param {string} idempotencyKey - Unique idempotency key
  * @returns {Object|null} Cached response or null if not found
  */
-function checkIdempotencyKey(idempotencyKey) {
-  try {
-    const scriptProperties = PropertiesService.getScriptProperties();
-    const cacheKey = 'IDEMPOTENCY_' + idempotencyKey;
-    const cachedValue = scriptProperties.getProperty(cacheKey);
-    
-    if (cachedValue) {
-      return JSON.parse(cachedValue);
-    }
-    return null;
-  } catch (err) {
-    Logger.log('checkIdempotencyKey error: ' + err.message);
-    return null;
-  }
-}
 
 /**
  * Cache idempotency key result (24-hour TTL)
  * @param {string} idempotencyKey - Unique idempotency key
  * @param {Object} result - Result object to cache
  */
-function cacheIdempotencyKey(idempotencyKey, result) {
-  try {
-    const scriptProperties = PropertiesService.getScriptProperties();
-    const cacheKey = 'IDEMPOTENCY_' + idempotencyKey;
-    scriptProperties.setProperty(cacheKey, JSON.stringify(result));
-    // Note: PropertiesService has implicit ~10MB limit and expires old keys
-  } catch (err) {
-    Logger.log('cacheIdempotencyKey error: ' + err.message);
-  }
-}
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -818,41 +760,6 @@ function buildCatalogMap(sheet) {
  * @param {string} parameterKey - Config parameter name (e.g., "LAST_AUDIT_REPORT_DATE")
  * @return {string|null} Parameter value, or null if not found
  */
-function getSystemConfig(parameterKey) {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const configSheet = ss.getSheetByName("System Config");
-
-    if (!configSheet) {
-      Logger.log("[ERROR] System Config sheet not found");
-      return null;
-    }
-
-    const data = configSheet.getDataRange().getValues();
-    const headers = data[0];
-
-    const keyIndex = headers.indexOf("parameter_key");
-    const valueIndex = headers.indexOf("parameter_value");
-
-    if (keyIndex === -1 || valueIndex === -1) {
-      Logger.log("[ERROR] System Config headers missing parameter_key or parameter_value");
-      return null;
-    }
-
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][keyIndex] === parameterKey) {
-        return data[i][valueIndex];
-      }
-    }
-
-    Logger.log(`[WARN] Parameter not found: ${parameterKey}`);
-    return null;
-
-  } catch (error) {
-    Logger.log(`[ERROR] getSystemConfig: ${error.message}`);
-    return null;
-  }
-}
 
 /**
  * setSystemConfig()
@@ -862,59 +769,6 @@ function getSystemConfig(parameterKey) {
  * @param {string} parameterValue - New value
  * @param {string} description - Optional description (defaults to "")
  */
-function setSystemConfig(parameterKey, parameterValue, description = "") {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const configSheet = ss.getSheetByName("System Config");
-
-    if (!configSheet) {
-      Logger.log("[ERROR] System Config sheet not found");
-      return;
-    }
-
-    const data = configSheet.getDataRange().getValues();
-    const headers = data[0];
-
-    const keyIndex = headers.indexOf("parameter_key");
-    const valueIndex = headers.indexOf("parameter_value");
-    const descIndex = headers.indexOf("description");
-    const modIndex = headers.indexOf("last_modified");
-
-    if (keyIndex === -1 || valueIndex === -1) {
-      Logger.log("[ERROR] System Config headers missing required columns");
-      return;
-    }
-
-    const now = new Date().toISOString();
-
-    // Search for existing key
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][keyIndex] === parameterKey) {
-        configSheet.getRange(i + 1, valueIndex + 1).setValue(parameterValue);
-        if (descIndex >= 0) {
-          configSheet.getRange(i + 1, descIndex + 1).setValue(description);
-        }
-        if (modIndex >= 0) {
-          configSheet.getRange(i + 1, modIndex + 1).setValue(now);
-        }
-        return;
-      }
-    }
-
-    // Key not found; append new row
-    const newRow = new Array(headers.length).fill("");
-    newRow[keyIndex] = parameterKey;
-    newRow[valueIndex] = parameterValue;
-    if (descIndex >= 0) newRow[descIndex] = description;
-    if (modIndex >= 0) newRow[modIndex] = now;
-
-    configSheet.appendRow(newRow);
-    Logger.log(`[INFO] Added System Config parameter: ${parameterKey}`);
-
-  } catch (error) {
-    Logger.log(`[ERROR] setSystemConfig: ${error.message}`);
-  }
-}
 
 function getDailySessionQR() {
   try {
