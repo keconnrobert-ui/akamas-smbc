@@ -74,9 +74,8 @@ function validateRoleAccess_(userRoleNum, minimumRequired) {
  */
 function doGet(e) {
   try {
-    // Fallback alignment: check 'page' first, then 'panel', default to 'dashboard'
     const view = (e.parameter.page || e.parameter.panel || 'dashboard').toLowerCase();
-    
+
     switch (view) {
       case 'dashboard':
         return getDashboard();
@@ -93,7 +92,7 @@ function doGet(e) {
       default:
         return HtmlService.createHtmlOutput('<h1>Unknown View</h1>');
     }
-    
+
   } catch (err) {
     return HtmlService.createHtmlOutput(
       '<h1>Portal Initialization Error</h1><p>' +
@@ -102,6 +101,7 @@ function doGet(e) {
     );
   }
 }
+
 
 /**
  * doPost(e) - Hardened API Gateway with Full RBAC, CSRF, Rate Limiting, & Concurrency
