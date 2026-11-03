@@ -769,7 +769,6 @@ function buildCatalogMap(sheet) {
  * @param {string} parameterValue - New value
  * @param {string} description - Optional description (defaults to "")
  */
-
 function getDailySessionQR() {
   try {
     const userEmail = Session.getActiveUser().getEmail();
