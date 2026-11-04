@@ -4,16 +4,15 @@
   <base target="_top">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Akamas SMBC — Demo Dashboard</title>
+  <title>Akamas SMBC — Dashboard</title>
   <style>
-    *{box-sizing:border-box}body{margin:0;background:#f1f5f9;color:#17243a;font:16px Arial,sans-serif}.wrap{max-width:1000px;margin:auto;padding:24px}.head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.head h1{margin:0;color:#1a365d}.tag{padding:7px 11px;background:#dbeafe;border-radius:20px;color:#1e40af;font-size:13px;font-weight:bold}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:22px 0}.card,section{background:white;border:1px solid #dbe3ec;border-radius:14px;padding:18px;box-shadow:0 3px 12px #0f172a0b}.label{color:#64748b;font-size:12px;font-weight:bold;text-transform:uppercase}.value{margin-top:8px;font-size:30px;font-weight:bold;color:#1a365d}.sub{color:#64748b;font-size:13px;margin-top:5px}h2{font-size:19px;color:#1a365d}table{width:100%;border-collapse:collapse;text-align:left}th,td{padding:11px 8px;border-bottom:1px solid #e2e8f0}th{color:#64748b;font-size:12px;text-transform:uppercase}td:last-child,th:last-child{text-align:right}.amount{font-weight:bold}.notice{padding:12px;margin:12px 0;border-radius:9px;background:#fff7ed;color:#9a3412}.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.links a{background:#1a365d;color:white;text-decoration:none;padding:12px 16px;border-radius:9px;font-weight:bold}.error{color:#991b1b}.muted{color:#64748b}
+    *{box-sizing:border-box}body{margin:0;background:#f1f5f9;color:#17243a;font:16px Arial,sans-serif}.wrap{max-width:1000px;margin:auto;padding:24px}.head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.head h1{margin:0;color:#1a365d}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:22px 0}.card,section{background:white;border:1px solid #dbe3ec;border-radius:14px;padding:18px;box-shadow:0 3px 12px #0f172a0b}.label{color:#64748b;font-size:12px;font-weight:bold;text-transform:uppercase}.value{margin-top:8px;font-size:30px;font-weight:bold;color:#1a365d}.sub{color:#64748b;font-size:13px;margin-top:5px}h2{font-size:19px;color:#1a365d}table{width:100%;border-collapse:collapse;text-align:left}th,td{padding:11px 8px;border-bottom:1px solid #e2e8f0}th{color:#64748b;font-size:12px;text-transform:uppercase}td:last-child,th:last-child{text-align:right}.amount{font-weight:bold}.notice{padding:12px;margin:12px 0;border-radius:9px;background:#fff7ed;color:#9a3412}.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.links a{background:#1a365d;color:white;text-decoration:none;padding:12px 16px;border-radius:9px;font-weight:bold}.error{color:#991b1b}.muted{color:#64748b}
   </style>
 </head>
 <body>
   <main class="wrap">
-    <header class="head"><h1>🎳 Akamas SMBC Dashboard</h1><span class="tag">SIMULATED DATA · READ ONLY</span></header>
-    <p class="muted">A read-only overview of the demonstration workbook. No records are changed.</p>
-    <nav class="links"><a href="?page=reception">Reception QR display</a><a href="?page=checkin">Check-in demo</a></nav>
+    <header class="head"><h1>🎳 Akamas SMBC Dashboard</h1></header>
+    <nav class="links"><a id="reception-link" href="#">Reception QR display</a><a id="checkin-link" href="#">Bowler check-in</a></nav>
     <div id="message" class="muted" role="status">Loading dashboard…</div>
     <div id="dashboard" hidden>
       <div class="cards">
@@ -29,6 +28,11 @@
   </main>
   <script>
     function euro(value){return new Intl.NumberFormat('en-GB',{style:'currency',currency:'EUR'}).format(value||0)}
+    google.script.run.withSuccessHandler(function(links){
+      if(!links)return;
+      document.getElementById('reception-link').href=links.reception;
+      document.getElementById('checkin-link').href=links.checkin;
+    }).getDashboardDemoLinks();
     google.script.run.withSuccessHandler(function(result){
       const message=document.getElementById('message');
       if(!result||!result.ok){message.className='error';message.textContent='Dashboard data could not be loaded.';return;}
@@ -39,7 +43,7 @@
       document.getElementById('attendance').textContent=data.attendanceToday;
       document.getElementById('net').textContent=euro(data.ledgerNet);
       const body=document.getElementById('recent');
-      if(!data.recentLedger.length){body.innerHTML='<tr><td colspan="4" class="muted">No ledger rows found.</td></tr>';}
+      if(!data.recentLedger.length)body.innerHTML='<tr><td colspan="4" class="muted">No ledger rows found.</td></tr>';
       data.recentLedger.forEach(function(row){const tr=document.createElement('tr');[row.id,row.date,row.type,euro(row.amount)].forEach(function(value,index){const td=document.createElement('td');td.textContent=value;if(index===3)td.className='amount';tr.appendChild(td);});body.appendChild(tr);});
       const warnings=document.getElementById('warnings');
       (data.warnings||[]).forEach(function(text){const div=document.createElement('div');div.className='notice';div.textContent=text;warnings.appendChild(div);});

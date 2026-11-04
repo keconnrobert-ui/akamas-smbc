@@ -4,7 +4,7 @@
   <base target="_top">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Akamas SMBC — Check-in Demo</title>
+  <title>Akamas SMBC — Bowler Check-in</title>
   <style>
     *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:18px;background:linear-gradient(135deg,#1a365d,#0f172a);font-family:Arial,sans-serif;color:#17243a}.card{width:min(100%,420px);padding:26px;background:#fff;border-radius:18px;box-shadow:0 16px 40px #0005}h1{margin:0 0 8px;color:#1a365d;font-size:1.5rem}.date{margin:0 0 22px;color:#64748b}label{display:block;margin-bottom:8px;font-weight:700}input,button{width:100%;min-height:50px;border-radius:9px;font:inherit}input{padding:12px;border:2px solid #cbd5e1}input:focus{outline:3px solid #bfdbfe;border-color:#1a365d}button{margin-top:14px;border:0;background:#1a365d;color:white;font-weight:700;cursor:pointer}button:disabled{opacity:.6;cursor:wait}.notice{margin-top:16px;padding:14px;border-radius:10px;line-height:1.5}.welcome{background:#ecfdf5;color:#065f46}.error{background:#fef2f2;color:#991b1b}.small{font-size:.85rem;color:#64748b;line-height:1.5}
   </style>
@@ -14,12 +14,11 @@
     <h1>Welcome to Akamas SMBC</h1>
     <p class="date">Session: <strong id="session-date">Loading…</strong></p>
     <form id="checkin-form">
-      <label for="identifier">Enter any test identifier</label>
-      <input id="identifier" name="identifier" autocomplete="off" placeholder="For example, DEMO001" required maxlength="100">
+      <label for="identifier">Bowler ID, name, telephone or email</label>
+      <input id="identifier" name="identifier" autocomplete="off" placeholder="Enter your details" required maxlength="100">
       <button id="submit" type="submit">Continue</button>
     </form>
     <div id="result" class="notice" role="status" aria-live="polite" hidden></div>
-    <p class="small">This is a demonstration only. It does not look up a real bowler or record attendance or payment.</p>
   </main>
   <script>
     let sessionDate='';
@@ -29,7 +28,6 @@
       sessionDate=(requestedDate&&/^\\d{4}-\\d{2}-\\d{2}$/.test(requestedDate))?requestedDate:(result&&result.ok?result.data.sessionDate:'');
       document.getElementById('session-date').textContent=sessionDate||'Unavailable';
     }).getQrDemoSessionInfo();
-
     document.getElementById('checkin-form').addEventListener('submit',function(event){
       event.preventDefault();
       const button=document.getElementById('submit');
@@ -38,9 +36,9 @@
       google.script.run.withSuccessHandler(function(result){
         button.disabled=false;button.textContent='Continue';panel.hidden=false;
         panel.className='notice '+(result&&result.ok?'welcome':'error');
-        panel.textContent=result&&result.ok?result.message+' Test identifier: '+result.data.identifier+'.':((result&&result.message)||'Check-in could not be completed.');
+        panel.textContent=result&&result.ok?result.message+' '+result.data.identifier+'.':((result&&result.message)||'Check-in could not be completed.');
       }).withFailureHandler(function(error){
-        button.disabled=false;button.textContent='Continue';panel.hidden=false;panel.className='notice error';panel.textContent='Unable to contact the demo: '+error.message;
+        button.disabled=false;button.textContent='Continue';panel.hidden=false;panel.className='notice error';panel.textContent='Unable to contact the system: '+error.message;
       }).demoQrCheckIn(document.getElementById('identifier').value,sessionDate);
     });
   </script>
