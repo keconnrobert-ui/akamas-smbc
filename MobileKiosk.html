@@ -14,7 +14,7 @@
     <form id="checkin-form">
       <label for="identifier">Bowler ID, name, telephone or email</label>
       <input id="identifier" name="identifier" autocomplete="off" placeholder="Enter your details" required maxlength="100">
-      <button id="submit" type="submit">Find bowler</button>
+      <button id="submit" type="submit">Check in</button>
     </form>
     <div id="result" class="notice" role="status" aria-live="polite" hidden></div>
   </main>
@@ -28,15 +28,15 @@
     document.getElementById('checkin-form').addEventListener('submit',function(event){
       event.preventDefault();
       const button=document.getElementById('submit'), panel=document.getElementById('result');
-      button.disabled=true;button.textContent='Searching…';panel.hidden=true;panel.replaceChildren();
+      button.disabled=true;button.textContent='Checking in…';panel.hidden=true;panel.replaceChildren();
       google.script.run.withSuccessHandler(function(result){
-        button.disabled=false;button.textContent='Find bowler';panel.hidden=false;
+        button.disabled=false;button.textContent='Check in';panel.hidden=false;
         const data=result&&result.data||{};
-        panel.className='notice '+(data.planStatus==='CURRENT'?'welcome':(result&&result.ok?'caution':'error'));
-        panel.textContent=(result&&result.message)||'Search could not be completed.';
+        panel.className='notice '+(data.planStatus==='CURRENT'&&result&&result.ok?'welcome':(result&&result.ok?'caution':'error'));
+        panel.textContent=(result&&result.message)||'Check-in could not be completed.';
         if(data.found){
           const detail=document.createElement('div');
-          detail.textContent='Bowler: '+(data.name||'')+(data.bowlerId?' ('+data.bowlerId+')':'')+(data.productName?' · Plan: '+data.productName:'')+(data.dueDate?' · Due: '+data.dueDate:'');
+          detail.textContent='Bowler: '+(data.name||'')+(data.bowlerId?' ('+data.bowlerId+')':'')+(data.productName?' · Plan: '+data.productName:'')+(data.dueDate?' · Due: '+data.dueDate:'')+(data.paymentStatus?' · '+data.paymentStatus:'')+(data.attendanceId?' · Attendance: '+data.attendanceId:'');
           panel.appendChild(document.createElement('br'));panel.appendChild(detail);
         }
         if(data.matches&&data.matches.length){
@@ -45,8 +45,8 @@
           panel.appendChild(list);
         }
       }).withFailureHandler(function(error){
-        button.disabled=false;button.textContent='Find bowler';panel.hidden=false;panel.className='notice error';panel.textContent='Unable to contact the system: '+error.message;
-      }).lookupDemoBowler(document.getElementById('identifier').value,sessionDate);
+        button.disabled=false;button.textContent='Check in';panel.hidden=false;panel.className='notice error';panel.textContent='Unable to contact the system: '+error.message;
+      }).processDemoBowlerCheckIn(document.getElementById('identifier').value,sessionDate);
     });
   </script>
 </body>
