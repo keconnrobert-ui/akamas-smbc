@@ -79,6 +79,8 @@ function doGet(e) {
     switch (view) {
       case 'dashboard':
         return getDashboard();
+      case 'revenueproducts':
+        return getCashierRevenueProductsPage();
       case 'kiosk':
       case 'mobilekiosk':
       case 'checkin':
