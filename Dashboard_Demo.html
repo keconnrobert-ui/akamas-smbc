@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Akamas SMBC — Dashboard</title>
   <style>
-    *{box-sizing:border-box}body{margin:0;background:#f1f5f9;color:#17243a;font:16px Arial,sans-serif}.wrap{max-width:1000px;margin:auto;padding:24px}.head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.head h1{margin:0;color:#1a365d}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:22px 0}.card,section{background:white;border:1px solid #dbe3ec;border-radius:14px;padding:18px;box-shadow:0 3px 12px #0f172a0b}.label{color:#64748b;font-size:12px;font-weight:bold;text-transform:uppercase}.value{margin-top:8px;font-size:30px;font-weight:bold;color:#1a365d}.sub{color:#64748b;font-size:13px;margin-top:5px}h2{font-size:19px;color:#1a365d}table{width:100%;border-collapse:collapse;text-align:left}th,td{padding:11px 8px;border-bottom:1px solid #e2e8f0}th{color:#64748b;font-size:12px;text-transform:uppercase}td:last-child,th:last-child{text-align:right}.amount{font-weight:bold}.notice{padding:12px;margin:12px 0;border-radius:9px;background:#fff7ed;color:#9a3412}.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.links a,.refresh{background:#1a365d;color:white;text-decoration:none;padding:12px 16px;border:0;border-radius:9px;font-weight:bold;cursor:pointer}.error{color:#991b1b}.muted{color:#64748b}.refresh{margin:0 0 12px;min-height:44px}
+    *{box-sizing:border-box}body{margin:0;background:#f1f5f9;color:#17243a;font:16px Arial,sans-serif}.wrap{max-width:1000px;margin:auto;padding:24px}.head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.head h1{margin:0;color:#1a365d}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:22px 0}.card,section{background:white;border:1px solid #dbe3ec;border-radius:14px;padding:18px;box-shadow:0 3px 12px #0f172a0b}.label{color:#64748b;font-size:12px;font-weight:bold;text-transform:uppercase}.value{margin-top:8px;font-size:30px;font-weight:bold;color:#1a365d}.sub{color:#64748b;font-size:13px;margin-top:5px}h2{font-size:19px;color:#1a365d}table{width:100%;border-collapse:collapse;text-align:left}th,td{padding:11px 8px;border-bottom:1px solid #e2e8f0}th{color:#64748b;font-size:12px;text-transform:uppercase}td:last-child,th:last-child{text-align:right}.amount{font-weight:bold}.notice{padding:12px;margin:12px 0;border-radius:9px;background:#fff7ed;color:#9a3412}.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.links a,.refresh,.paid-button{background:#1a365d;color:white;text-decoration:none;padding:10px 14px;border:0;border-radius:9px;font-weight:bold;cursor:pointer}.paid-button:disabled,.refresh:disabled{opacity:.6;cursor:wait}.error{color:#991b1b}.muted{color:#64748b}.refresh{margin:0 0 12px;min-height:44px}.paid-button{white-space:nowrap}
   </style>
 </head>
 <body>
@@ -23,7 +23,7 @@
         <article class="card"><div class="label">Ledger net</div><div class="value" id="net">—</div><div class="sub">Sum of signed ledger amounts</div></article>
       </div>
       <section><h2>Recent ledger activity</h2><div style="overflow-x:auto"><table><thead><tr><th>Ledger ID</th><th>Date</th><th>Type</th><th>Amount</th></tr></thead><tbody id="recent"></tbody></table></div></section>
-      <section style="margin-top:16px"><h2>Unpaid check-ins — cashier review</h2><button class="refresh" type="button" onclick="loadUnpaidCheckins()">Refresh unpaid list</button><div id="unpaid-message" class="muted" role="status">Loading unpaid check-ins…</div><div style="overflow-x:auto"><table><thead><tr><th>Attendance ID</th><th>Bowler</th><th>Session</th><th>Product</th><th>Status</th></tr></thead><tbody id="unpaid-rows"></tbody></table></div></section>
+      <section style="margin-top:16px"><h2>Unpaid check-ins — cashier review</h2><button class="refresh" type="button" onclick="loadUnpaidCheckins()">Refresh unpaid list</button><div id="unpaid-message" class="muted" role="status">Loading unpaid check-ins…</div><div style="overflow-x:auto"><table><thead><tr><th>Attendance ID</th><th>Bowler</th><th>Session</th><th>Product</th><th>Status</th><th>Action</th></tr></thead><tbody id="unpaid-rows"></tbody></table></div></section>
       <div id="warnings"></div>
     </div>
   </main>
@@ -52,9 +52,26 @@
       google.script.run.withSuccessHandler(function(result){
         if(!result||!result.ok){status.className='error';status.textContent=(result&&result.message)||'Could not load unpaid check-ins.';return;}
         status.className='muted';status.textContent=result.message;
-        if(!result.data.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=5;td.textContent='No unpaid attendees.';tr.appendChild(td);body.appendChild(tr);return;}
-        result.data.forEach(function(row){const tr=document.createElement('tr');[row.attendanceId||'—',row.bowlerName?row.bowlerName+' ('+row.bowlerId+')':row.bowlerId,row.sessionDate||'—',row.productId||'—',row.paymentStatus].forEach(function(value){const td=document.createElement('td');td.textContent=value;tr.appendChild(td);});body.appendChild(tr);});
+        if(!result.data.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=6;td.textContent='No unpaid attendees.';tr.appendChild(td);body.appendChild(tr);return;}
+        result.data.forEach(function(row){
+          const tr=document.createElement('tr');
+          [row.attendanceId||'—',row.bowlerName?row.bowlerName+' ('+row.bowlerId+')':row.bowlerId,row.sessionDate||'—',row.productId||'—',row.paymentStatus].forEach(function(value){const td=document.createElement('td');td.textContent=value;tr.appendChild(td);});
+          const action=document.createElement('td');
+          const button=document.createElement('button');button.type='button';button.className='paid-button';button.textContent='Mark paid';
+          if(!row.attendanceId){button.disabled=true;button.title='This row has no attendance ID';}
+          else button.addEventListener('click',function(){markAttendancePaid(row.attendanceId,button);});
+          action.appendChild(button);tr.appendChild(action);body.appendChild(tr);
+        });
       }).withFailureHandler(function(error){status.className='error';status.textContent='Could not load unpaid check-ins: '+error.message;}).getDemoUnpaidAttendance();
+    }
+    function markAttendancePaid(attendanceId,button){
+      if(!window.confirm('Mark attendance '+attendanceId+' as PAID? This does not create a ledger entry.'))return;
+      button.disabled=true;button.textContent='Updating…';
+      google.script.run.withSuccessHandler(function(result){
+        const status=document.getElementById('unpaid-message');
+        if(!result||!result.ok){status.className='error';status.textContent=(result&&result.message)||'Payment status was not updated.';button.disabled=false;button.textContent='Mark paid';return;}
+        status.className='muted';status.textContent=result.message;loadUnpaidCheckins();
+      }).withFailureHandler(function(error){button.disabled=false;button.textContent='Mark paid';const status=document.getElementById('unpaid-message');status.className='error';status.textContent='Could not update attendance: '+error.message;}).markDemoAttendancePaid(attendanceId);
     }
   </script>
 </body>
