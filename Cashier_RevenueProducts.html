@@ -30,6 +30,7 @@
     let productList=[];let selectedProduct=null;let selectedBowler=null;
     function euro(value){return new Intl.NumberFormat('en-GB',{style:'currency',currency:'EUR'}).format(value||0)}
     function categoryKey(value){return String(value||'Uncategorised').trim().toUpperCase()}
+    function localTodayText(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
     function loadProducts(){
       const status=document.getElementById('status');status.className='muted';status.textContent='Loading products…';
       google.script.run.withSuccessHandler(function(result){if(!result||!result.ok){status.className='error';status.textContent=(result&&result.message)||'Could not load products.';return}productList=result.data||[];status.textContent=result.message;buildTabs()}).withFailureHandler(function(error){status.className='error';status.textContent='Could not load products: '+error.message}).getDemoRevenueProducts();
@@ -56,13 +57,21 @@
     }
     function addCalendarMonths(dateText,months){
       const parts=String(dateText).split('-').map(Number);if(parts.length!==3||!parts.every(Number.isFinite))return '';
-      const year=parts[0],month=parts[1]-1,day=parts[2],targetMonth=month+months,targetYear=year+Math.floor(targetMonth/12),normalizedMonth=((targetMonth%12)+12)%12;
-      const lastDay=new Date(Date.UTC(targetYear,normalizedMonth+1,0)).getUTCDate();return new Date(Date.UTC(targetYear,normalizedMonth,Math.min(day,lastDay))).toISOString().slice(0,10);
+      const year=parts[0],month=parts[1]-1,targetMonth=month+months,targetYear=year+Math.floor(targetMonth/12),normalizedMonth=((targetMonth%12)+12)%12;
+      return new Date(Date.UTC(targetYear,normalizedMonth,1)).toISOString().slice(0,10);
     }
     function renewalDueDate(product){
       const months=Number(product.coverageMonths)||0;if(months<=0)return null;
-      const today=new Date().toISOString().slice(0,10),currentDue=selectedBowler&&selectedBowler.dueDate;
-      const start=currentDue&&currentDue>today?currentDue:today;return {start:start,due:addCalendarMonths(start,months),months:months,early:!!(currentDue&&currentDue>today)};
+      const today=localTodayText(),currentDue=selectedBowler&&selectedBowler.dueDate;if(!currentDue)return null;
+      const todayParts=today.split('-').map(Number),dueParts=String(currentDue).split('-').map(Number);
+      if(todayParts.length!==3||dueParts.length!==3)return null;
+      let start;
+      if(currentDue<today){
+        start=todayParts[0]+'-'+String(todayParts[1]).padStart(2,'0')+'-01';
+      }else{
+        start=addCalendarMonths(String(dueParts[0])+'-'+String(dueParts[1]).padStart(2,'0')+'-01',1);
+      }
+      return {start:start,due:addCalendarMonths(start,months),months:months,overdue:currentDue<today};
     }
     function showPreview(){
       const message=document.getElementById('preview-message'),box=document.getElementById('preview');message.hidden=true;
@@ -72,7 +81,7 @@
       let amount=selectedProduct.price;if(isDonation(selectedProduct)){amount=Number(document.getElementById('donation-amount').value);if(!isFinite(amount)||amount<=0){showMessage('Enter a donation amount greater than zero.');return}}
       if(!isDonation(selectedProduct)&&(amount===null||!isFinite(Number(amount))||Number(amount)<0)){showMessage('The catalogue price is missing or invalid; ask a manager to correct ProductTypes.');return}
       const rows=[['Product',(selectedProduct.name||selectedProduct.productId)+' ('+selectedProduct.productId+')'],['Amount',euro(Number(amount))],['Payment method',method]];
-      if(selectedBowler){rows.push(['Bowler',(selectedBowler.name||'')+' ('+selectedBowler.bowlerId+')'],['Current plan status',selectedBowler.planStatus||'Check required']);if(isMatFee(selectedProduct)){const renewal=renewalDueDate(selectedProduct);if(renewal){rows.push(['New commitment',renewal.months+' month'+(renewal.months===1?'':'s')],['Renewal begins',renewal.start],['Projected plan due date',renewal.due]);if(renewal.early)rows.push(['Renewal timing','Early renewal: remaining time is carried forward.'])}else rows.push(['Commitment','Not specified in ProductTypes; due date cannot be projected.'])}}
+      if(selectedBowler){rows.push(['Bowler',(selectedBowler.name||'')+' ('+selectedBowler.bowlerId+')'],['Current plan status',selectedBowler.planStatus||'Check required']);if(isMatFee(selectedProduct)){const renewal=renewalDueDate(selectedProduct);if(renewal){rows.push(['New commitment',renewal.months+' month'+(renewal.months===1?'':'s')],['Renewal term starts',renewal.start],['Next renewal date',renewal.due]);rows.push(['Renewal rule',renewal.overdue?'Overdue renewal covers the current month from its 1st.':'Renewal begins on the 1st after the existing commitment is due.'])}else rows.push(['Commitment','Not specified or no due date found; renewal dates cannot be projected.'])}}
       box.replaceChildren();rows.forEach(function(item){const line=document.createElement('div');line.textContent=item[0]+': '+item[1];box.appendChild(line)});box.className='selected';box.hidden=false;showMessage('Payment preview ready. No records have been changed.',true);
     }
     loadProducts();
