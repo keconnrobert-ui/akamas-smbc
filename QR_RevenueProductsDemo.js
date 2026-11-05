@@ -1,4 +1,4 @@
-/** Returns active revenue products with cashier-safe catalog fields only. */
+/** Returns active revenue products with cashier-safe catalogue fields only. */
 function getDemoRevenueProducts() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ProductTypes');
   if (!sheet || sheet.getLastRow() < 2) return { ok: false, message: 'ProductTypes has no product rows.', data: [] };
@@ -18,6 +18,8 @@ function getDemoRevenueProducts() {
   const priceCol = find(['PRICE', 'SHELFPRICE']);
   const stockCatCol = find(['STCAT']);
   const activeCol = find(['ACTIVE']);
+  const coverageCol = find(['COVERAGEMONTHS']);
+  const sessionsCol = find(['SESSIONSPERCYCLE']);
   if (idCol < 0 || nameCol < 0 || stockCatCol < 0 || priceCol < 0) {
     return { ok: false, message: 'ProductTypes needs PRODUCTID, NAME, STCAT and PRICE (or SHELFPRICE) headers.', data: [] };
   }
@@ -29,13 +31,19 @@ function getDemoRevenueProducts() {
     const active = activeCol < 0 || row[activeCol] === true || ['TRUE', 'YES', 'ACTIVE', '1'].includes(String(row[activeCol] || '').trim().toUpperCase());
     if (!active) continue;
     const rawPrice = row[priceCol];
-    const price = typeof rawPrice === 'number' ? rawPrice : Number(String(rawPrice || '').replace(/[€,£\s,]/g, ''));
+    const parsedPrice = typeof rawPrice === 'number' ? rawPrice : Number(String(rawPrice || '').replace(/[€,£\s,]/g, ''));
+    const coverageMonths = coverageCol < 0 ? 0 : (parseInt(row[coverageCol], 10) || 0);
+    const sessionsPerCycle = sessionsCol < 0 ? 0 : (parseInt(row[sessionsCol], 10) || 0);
+    const rawCategory = String(row[stockCatCol] || '').trim() || 'Uncategorised';
     products.push({
       productId: productId,
       name: String(row[nameCol] || '').trim(),
       incomeCategory: incomeCol < 0 ? '' : String(row[incomeCol] || '').trim(),
-      stockCategory: String(row[stockCatCol] || '').trim() || 'Uncategorised',
-      price: isFinite(price) ? price : null
+      stockCategory: rawCategory,
+      stockCategoryKey: normalize(rawCategory),
+      price: isFinite(parsedPrice) ? parsedPrice : null,
+      coverageMonths: coverageMonths,
+      sessionsPerCycle: sessionsPerCycle
     });
   }
   return { ok: true, message: products.length ? 'Active products loaded from ProductTypes.' : 'No active products found.', data: products };
