@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top"><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Akamas SMBC — Revenue Products</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#f1f5f9;color:#17243a;font:16px Arial,sans-serif}.wrap{max-width:980px;margin:auto;padding:24px}.head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}h1,h2{color:#1a365d}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.tab{border:1px solid #cbd5e1;border-radius:20px;padding:9px 14px;background:#fff;color:#1a365d;font-weight:bold;cursor:pointer}.tab[aria-selected="true"]{background:#1a365d;color:#fff;border-color:#1a365d}.panel{background:#fff;border:1px solid #dbe3ec;border-radius:14px;padding:18px;box-shadow:0 3px 12px #0f172a0b}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.product{border:1px solid #e2e8f0;border-radius:10px;padding:15px}.product h3{margin:0 0 8px;color:#1a365d}.id,.meta{color:#64748b;font-size:13px}.price{font-size:20px;font-weight:bold;margin-top:12px}.error{color:#991b1b}.muted{color:#64748b}.refresh{padding:10px 14px;border:0;border-radius:8px;background:#1a365d;color:#fff;font-weight:bold;cursor:pointer}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="head"><div><h1>Revenue Products</h1><p class="muted">Choose a product category to review the active catalogue and fixed prices.</p></div><button class="refresh" type="button" onclick="loadProducts()">Refresh</button></header>
+    <div id="status" class="muted" role="status">Loading products…</div>
+    <nav id="tabs" class="tabs" aria-label="Product categories" hidden></nav>
+    <section class="panel"><div id="products" class="grid"></div></section>
+  </main>
+  <script>
+    let productList=[];
+    function euro(value){return new Intl.NumberFormat('en-GB',{style:'currency',currency:'EUR'}).format(value||0)}
+    function loadProducts(){
+      const status=document.getElementById('status');status.className='muted';status.textContent='Loading products…';
+      google.script.run.withSuccessHandler(function(result){
+        if(!result||!result.ok){status.className='error';status.textContent=(result&&result.message)||'Could not load products.';return;}
+        productList=result.data||[];status.textContent=result.message;buildTabs();
+      }).withFailureHandler(function(error){status.className='error';status.textContent='Could not load products: '+error.message;}).getDemoRevenueProducts();
+    }
+    function buildTabs(){
+      const tabs=document.getElementById('tabs');tabs.replaceChildren();tabs.hidden=false;
+      const categories=[];productList.forEach(function(p){if(categories.indexOf(p.stockCategory)<0)categories.push(p.stockCategory);});
+      categories.sort(function(a,b){return a.localeCompare(b);});
+      addTab('All products');categories.forEach(addTab);renderProducts('All products');
+      function addTab(category){const button=document.createElement('button');button.type='button';button.className='tab';button.textContent=category;button.setAttribute('aria-selected','false');button.addEventListener('click',function(){tabs.querySelectorAll('.tab').forEach(function(tab){tab.setAttribute('aria-selected','false');});button.setAttribute('aria-selected','true');renderProducts(category);});tabs.appendChild(button);}
+      tabs.firstChild.setAttribute('aria-selected','true');
+    }
+    function renderProducts(category){
+      const container=document.getElementById('products');container.replaceChildren();
+      const shown=productList.filter(function(p){return category==='All products'||p.stockCategory===category;});
+      if(!shown.length){const p=document.createElement('p');p.className='muted';p.textContent='No products in this category.';container.appendChild(p);return;}
+      shown.forEach(function(product){
+        const card=document.createElement('article');card.className='product';
+        const name=document.createElement('h3');name.textContent=product.name||product.productId;card.appendChild(name);
+        const id=document.createElement('div');id.className='id';id.textContent=product.productId;card.appendChild(id);
+        const categoryText=document.createElement('div');categoryText.className='meta';categoryText.textContent='STCAT: '+product.stockCategory+(product.incomeCategory?' · CATEGORY: '+product.incomeCategory:'');card.appendChild(categoryText);
+        const price=document.createElement('div');price.className='price';price.textContent=product.price===null?'Price not set':euro(product.price);card.appendChild(price);
+        container.appendChild(card);
+      });
+    }
+    loadProducts();
+  </script>
+</body>
+</html>
