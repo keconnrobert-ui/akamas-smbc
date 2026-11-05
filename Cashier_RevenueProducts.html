@@ -4,7 +4,7 @@
   <base target="_top"><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Akamas SMBC — Revenue Products</title>
   <style>
-    *{box-sizing:border-box}body{margin:0;background:#f1f5f9;color:#17243a;font:16px Arial,sans-serif}.wrap{max-width:980px;margin:auto;padding:24px}.head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}h1,h2{color:#1a365d}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.tab{border:1px solid #cbd5e1;border-radius:20px;padding:9px 14px;background:#fff;color:#1a365d;font-weight:bold;cursor:pointer}.tab[aria-selected="true"]{background:#1a365d;color:#fff;border-color:#1a365d}.panel{background:#fff;border:1px solid #dbe3ec;border-radius:14px;padding:18px;box-shadow:0 3px 12px #0f172a0b;margin:14px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.product{border:1px solid #e2e8f0;border-radius:10px;padding:15px}.product h3{margin:0 0 8px;color:#1a365d}.id,.meta{color:#64748b;font-size:13px}.price{font-size:20px;font-weight:bold;margin:12px 0}.button{padding:10px 14px;border:0;border-radius:8px;background:#1a365d;color:#fff;font-weight:bold;cursor:pointer}.button:disabled{opacity:.55;cursor:not-allowed}.refresh{padding:10px 14px;border:0;border-radius:8px;background:#1a365d;color:#fff;font-weight:bold;cursor:pointer}.error{color:#991b1b}.muted{color:#64748b}.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}.field label{display:block;font-weight:bold;margin-bottom:6px}.field input,.field select{width:100%;min-height:44px;padding:9px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}.selected{background:#eff6ff;border:1px solid #bfdbfe;border-radius:9px;padding:12px;margin:12px 0}.summary{font-size:20px;font-weight:bold;color:#1a365d}.notice{padding:12px;border-radius:9px;background:#fff7ed;color:#9a3412;margin:12px 0}.success{background:#ecfdf5;color:#065f46}
+    *{box-sizing:border-box}body{margin:0;background:#f1f5f9;color:#17243a;font:16px Arial,sans-serif}.wrap{max-width:980px;margin:auto;padding:24px}.head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}h1,h2{color:#1a365d}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.tab{border:1px solid #cbd5e1;border-radius:20px;padding:9px 14px;background:#fff;color:#1a365d;font-weight:bold;cursor:pointer}.tab[aria-selected="true"]{background:#1a365d;color:#fff;border-color:#1a365d}.panel{background:#fff;border:1px solid #dbe3ec;border-radius:14px;padding:18px;box-shadow:0 3px 12px #0f172a0b;margin:14px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.product{border:1px solid #e2e8f0;border-radius:10px;padding:15px}.product h3{margin:0 0 8px;color:#1a365d}.id,.meta{color:#64748b;font-size:13px}.price{font-size:20px;font-weight:bold;margin:12px 0}.button,.refresh{padding:10px 14px;border:0;border-radius:8px;background:#1a365d;color:#fff;font-weight:bold;cursor:pointer}.button:disabled{opacity:.55;cursor:not-allowed}.error{color:#991b1b}.muted{color:#64748b}.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}.field label{display:block;font-weight:bold;margin-bottom:6px}.field input,.field select{width:100%;min-height:44px;padding:9px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}.selected{background:#eff6ff;border:1px solid #bfdbfe;border-radius:9px;padding:12px;margin:12px 0}.notice{padding:12px;border-radius:9px;background:#fff7ed;color:#9a3412;margin:12px 0}.success{background:#ecfdf5;color:#065f46}
   </style>
 </head>
 <body>
@@ -21,61 +21,59 @@
         <div class="field" id="donation-field" hidden><label for="donation-amount">Donation amount</label><input id="donation-amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Enter donation amount"></div>
         <div class="field"><label for="payment-method">Payment method</label><select id="payment-method"><option value="">Select method</option><option>Cash</option><option>Card</option><option>Bank transfer</option><option>Other</option></select></div>
       </div>
-      <div id="preview" class="selected" hidden></div>
-      <div id="preview-message" class="notice" role="status" hidden></div>
+      <div id="preview" class="selected" hidden></div><div id="preview-message" class="notice" role="status" hidden></div>
       <button id="preview-button" class="button" type="button" onclick="showPreview()" disabled>Review payment</button>
       <p class="muted">Preview only. This does not take payment, update attendance or member plans, or post a ledger entry.</p>
     </section>
   </main>
   <script>
-    let productList=[];
-    let selectedProduct=null;
-    let selectedBowler=null;
+    let productList=[];let selectedProduct=null;let selectedBowler=null;
     function euro(value){return new Intl.NumberFormat('en-GB',{style:'currency',currency:'EUR'}).format(value||0)}
     function categoryKey(value){return String(value||'Uncategorised').trim().toUpperCase()}
     function loadProducts(){
       const status=document.getElementById('status');status.className='muted';status.textContent='Loading products…';
-      google.script.run.withSuccessHandler(function(result){
-        if(!result||!result.ok){status.className='error';status.textContent=(result&&result.message)||'Could not load products.';return;}
-        productList=result.data||[];status.textContent=result.message;buildTabs();
-      }).withFailureHandler(function(error){status.className='error';status.textContent='Could not load products: '+error.message;}).getDemoRevenueProducts();
+      google.script.run.withSuccessHandler(function(result){if(!result||!result.ok){status.className='error';status.textContent=(result&&result.message)||'Could not load products.';return}productList=result.data||[];status.textContent=result.message;buildTabs()}).withFailureHandler(function(error){status.className='error';status.textContent='Could not load products: '+error.message}).getDemoRevenueProducts();
     }
     function buildTabs(){
-      const tabs=document.getElementById('tabs');tabs.replaceChildren();tabs.hidden=false;
-      const categories=[];
-      productList.forEach(function(product){const label=String(product.stockCategory||'Uncategorised').trim(),key=categoryKey(label);if(!categories.some(function(item){return item.key===key;}))categories.push({label:label,key:key});});
-      categories.sort(function(a,b){return a.label.localeCompare(b.label)});
-      addTab('All products',null);categories.forEach(function(category){addTab(category.label,category.key)});tabs.firstChild.setAttribute('aria-selected','true');renderProducts(null);
+      const tabs=document.getElementById('tabs');tabs.replaceChildren();tabs.hidden=false;const categories=[];
+      productList.forEach(function(product){const label=String(product.stockCategory||'Uncategorised').trim(),key=categoryKey(label);if(!categories.some(function(item){return item.key===key}))categories.push({label:label,key:key})});
+      categories.sort(function(a,b){return a.label.localeCompare(b.label)});addTab('All products',null);categories.forEach(function(item){addTab(item.label,item.key)});tabs.firstChild.setAttribute('aria-selected','true');renderProducts(null);
       function addTab(label,key){const button=document.createElement('button');button.type='button';button.className='tab';button.textContent=label;button.setAttribute('aria-selected','false');button.addEventListener('click',function(){tabs.querySelectorAll('.tab').forEach(function(tab){tab.setAttribute('aria-selected','false')});button.setAttribute('aria-selected','true');renderProducts(key)});tabs.appendChild(button)}
     }
     function needsBowler(product){return /MAT\s*FEE|PAY\s*2\s*PLAY|PAY2PLAY/i.test(product.stockCategory+' '+product.incomeCategory+' '+product.name)}
+    function isMatFee(product){return /MAT\s*FEE/i.test(product.stockCategory+' '+product.incomeCategory+' '+product.name)}
     function isDonation(product){return /DONATION/i.test(product.stockCategory+' '+product.incomeCategory+' '+product.name)}
     function renderProducts(key){
-      const container=document.getElementById('products');container.replaceChildren();
-      const shown=productList.filter(function(product){return !key||categoryKey(product.stockCategory)===key});
+      const container=document.getElementById('products');container.replaceChildren();const shown=productList.filter(function(product){return !key||categoryKey(product.stockCategory)===key});
       if(!shown.length){const p=document.createElement('p');p.className='muted';p.textContent='No products in this category.';container.appendChild(p);return}
       shown.forEach(function(product){const card=document.createElement('article');card.className='product';const name=document.createElement('h3');name.textContent=product.name||product.productId;card.appendChild(name);const id=document.createElement('div');id.className='id';id.textContent=product.productId;card.appendChild(id);const meta=document.createElement('div');meta.className='meta';meta.textContent='STCAT: '+product.stockCategory+(product.incomeCategory?' · CATEGORY: '+product.incomeCategory:'');card.appendChild(meta);const price=document.createElement('div');price.className='price';price.textContent=product.price===null?'Price not set':euro(product.price);card.appendChild(price);const button=document.createElement('button');button.type='button';button.className='button';button.textContent=selectedProduct&&selectedProduct.productId===product.productId?'Selected':'Select product';button.disabled=product.price===null&&!isDonation(product);button.addEventListener('click',function(){selectProduct(product)});card.appendChild(button);container.appendChild(card)})
     }
     function selectProduct(product){selectedProduct=product;selectedBowler=null;document.getElementById('bowler-query').value='';document.getElementById('bowler-result').textContent='';document.getElementById('bowler-field').hidden=!needsBowler(product);document.getElementById('donation-field').hidden=!isDonation(product);document.getElementById('donation-amount').value='';document.getElementById('preview').hidden=true;document.getElementById('preview-message').hidden=true;document.getElementById('selection').className='selected';document.getElementById('selection').textContent='Selected: '+(product.name||product.productId)+' ('+product.productId+') · '+(isDonation(product)?'Donation amount entered by cashier':(product.price===null?'Price not set':euro(product.price)));document.getElementById('preview-button').disabled=false;renderProducts(null)}
     function findBowler(){
-      if(!selectedProduct||!needsBowler(selectedProduct))return;
-      const input=document.getElementById('bowler-query'),output=document.getElementById('bowler-result'),button=document.getElementById('find-bowler');
-      if(!input.value.trim()){output.className='error';output.textContent='Enter bowler details.';return}
-      button.disabled=true;button.textContent='Searching…';output.className='muted';output.textContent='Searching…';
-      google.script.run.withSuccessHandler(function(result){button.disabled=false;button.textContent='Find bowler';if(!result||!result.ok||!result.data||!result.data.found){selectedBowler=null;output.className='error';output.textContent=(result&&result.message)||'Bowler was not found.';return}selectedBowler=result.data;output.className='success';output.textContent='Found: '+(selectedBowler.name||'')+' ('+selectedBowler.bowlerId+'). Current plan: '+(selectedBowler.productName||selectedBowler.productId||'not specified')+(selectedBowler.dueDate?' · Due '+selectedBowler.dueDate:'');}).withFailureHandler(function(error){button.disabled=false;button.textContent='Find bowler';selectedBowler=null;output.className='error';output.textContent='Lookup failed: '+error.message}).lookupDemoBowler(input.value,'');
+      if(!selectedProduct||!needsBowler(selectedProduct))return;const input=document.getElementById('bowler-query'),output=document.getElementById('bowler-result'),button=document.getElementById('find-bowler');
+      if(!input.value.trim()){output.className='error';output.textContent='Enter bowler details.';return}button.disabled=true;button.textContent='Searching…';output.className='muted';output.textContent='Searching…';
+      google.script.run.withSuccessHandler(function(result){button.disabled=false;button.textContent='Find bowler';if(!result||!result.ok||!result.data||!result.data.found){selectedBowler=null;output.className='error';output.textContent=(result&&result.message)||'Bowler was not found.';return}selectedBowler=result.data;output.className='success';output.textContent='Found: '+(selectedBowler.name||'')+' ('+selectedBowler.bowlerId+'). Current plan: '+(selectedBowler.productName||selectedBowler.productId||'not specified')+(selectedBowler.dueDate?' · Due '+selectedBowler.dueDate:'')}).withFailureHandler(function(error){button.disabled=false;button.textContent='Find bowler';selectedBowler=null;output.className='error';output.textContent='Lookup failed: '+error.message}).lookupDemoBowler(input.value,'');
+    }
+    function addCalendarMonths(dateText,months){
+      const parts=String(dateText).split('-').map(Number);if(parts.length!==3||!parts.every(Number.isFinite))return '';
+      const year=parts[0],month=parts[1]-1,day=parts[2],targetMonth=month+months,targetYear=year+Math.floor(targetMonth/12),normalizedMonth=((targetMonth%12)+12)%12;
+      const lastDay=new Date(Date.UTC(targetYear,normalizedMonth+1,0)).getUTCDate();return new Date(Date.UTC(targetYear,normalizedMonth,Math.min(day,lastDay))).toISOString().slice(0,10);
+    }
+    function renewalDueDate(product){
+      const months=Number(product.coverageMonths)||0;if(months<=0)return null;
+      const today=new Date().toISOString().slice(0,10),currentDue=selectedBowler&&selectedBowler.dueDate;
+      const start=currentDue&&currentDue>today?currentDue:today;return {start:start,due:addCalendarMonths(start,months),months:months,early:!!(currentDue&&currentDue>today)};
     }
     function showPreview(){
       const message=document.getElementById('preview-message'),box=document.getElementById('preview');message.hidden=true;
-      if(!selectedProduct){showMessage('Select a product first.');return}
-      if(needsBowler(selectedProduct)&&!selectedBowler){showMessage('Find and confirm the bowler before reviewing this payment.');return}
-      const method=document.getElementById('payment-method').value;if(!method){showMessage('Select a payment method.');return}
-      let amount=selectedProduct.price;
-      if(isDonation(selectedProduct)){amount=Number(document.getElementById('donation-amount').value);if(!isFinite(amount)||amount<=0){showMessage('Enter a donation amount greater than zero.');return}}
-      if(!isDonation(selectedProduct)&&(amount===null||!isFinite(Number(amount))||Number(amount)<0)){showMessage('The catalogue price is missing or invalid; ask a manager to correct ProductTypes.');return}
-      const rows=[['Product',selectedProduct.name||selectedProduct.productId+' ('+selectedProduct.productId+')'],['Amount',euro(Number(amount))],['Payment method',method]];
-      if(selectedBowler)rows.push(['Bowler',(selectedBowler.name||'')+' ('+selectedBowler.bowlerId+')'],['Current plan status',selectedBowler.planStatus||'Check required']);
-      box.replaceChildren();rows.forEach(function(item){const line=document.createElement('div');line.textContent=item[0]+': '+item[1];box.appendChild(line)});box.className='selected';box.hidden=false;showMessage('Payment preview ready. No records have been changed.',true);
       function showMessage(text,success){message.hidden=false;message.className='notice'+(success?' success':'');message.textContent=text}
+      if(!selectedProduct){showMessage('Select a product first.');return}if(needsBowler(selectedProduct)&&!selectedBowler){showMessage('Find and confirm the bowler before reviewing this payment.');return}
+      const method=document.getElementById('payment-method').value;if(!method){showMessage('Select a payment method.');return}
+      let amount=selectedProduct.price;if(isDonation(selectedProduct)){amount=Number(document.getElementById('donation-amount').value);if(!isFinite(amount)||amount<=0){showMessage('Enter a donation amount greater than zero.');return}}
+      if(!isDonation(selectedProduct)&&(amount===null||!isFinite(Number(amount))||Number(amount)<0)){showMessage('The catalogue price is missing or invalid; ask a manager to correct ProductTypes.');return}
+      const rows=[['Product',(selectedProduct.name||selectedProduct.productId)+' ('+selectedProduct.productId+')'],['Amount',euro(Number(amount))],['Payment method',method]];
+      if(selectedBowler){rows.push(['Bowler',(selectedBowler.name||'')+' ('+selectedBowler.bowlerId+')'],['Current plan status',selectedBowler.planStatus||'Check required']);if(isMatFee(selectedProduct)){const renewal=renewalDueDate(selectedProduct);if(renewal){rows.push(['New commitment',renewal.months+' month'+(renewal.months===1?'':'s')],['Renewal begins',renewal.start],['Projected plan due date',renewal.due]);if(renewal.early)rows.push(['Renewal timing','Early renewal: remaining time is carried forward.'])}else rows.push(['Commitment','Not specified in ProductTypes; due date cannot be projected.'])}}
+      box.replaceChildren();rows.forEach(function(item){const line=document.createElement('div');line.textContent=item[0]+': '+item[1];box.appendChild(line)});box.className='selected';box.hidden=false;showMessage('Payment preview ready. No records have been changed.',true);
     }
     loadProducts();
   </script>
