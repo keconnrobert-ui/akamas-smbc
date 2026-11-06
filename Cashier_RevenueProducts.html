@@ -9,11 +9,11 @@
 </head>
 <body>
   <main class="wrap">
-    <header class="head"><div><h1>Revenue Products</h1><p class="muted">Find the bowler first, then select a product and payment method. Prices come from ProductTypes.</p></div><button class="refresh" type="button" onclick="loadProducts()">Refresh catalogue</button></header>
+    <header class="head"><div><h1>Revenue Products</h1><p class="muted">Find the bowler first, then add products to the basket. Prices come from ProductTypes.</p></div><button class="refresh" type="button" onclick="loadProducts()">Refresh catalogue</button></header>
     <section class="panel" aria-labelledby="bowler-title">
       <h2 id="bowler-title">Find bowler</h2>
       <div class="field"><label for="bowler-query">Bowler ID, name, telephone or email</label><input id="bowler-query" maxlength="100" autocomplete="off" placeholder="Enter bowler details" oninput="clearBowler()"><button class="button" id="find-bowler" type="button" style="margin-top:8px" onclick="findBowler()">Find bowler</button><div id="bowler-result" class="muted" role="status" style="margin-top:8px"></div></div>
-      <p class="muted">A bowler is required for Mat Fees, Pay2Play and merchandise.</p>
+      <p class="muted">Each basket belongs to one bowler. Changing the bowler clears the basket.</p>
     </section>
     <div id="status" class="muted" role="status">Loading products…</div>
     <nav id="tabs" class="tabs" aria-label="Product categories" hidden></nav>
@@ -21,8 +21,13 @@
     <section class="panel" aria-labelledby="checkout-title">
       <h2 id="checkout-title">Cashier payment preview</h2>
       <div id="selection" class="selected muted">Select a product above to begin.</div>
+      <div class="field" id="donation-field" hidden><label for="donation-amount">Donation amount</label><input id="donation-amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Enter donation amount"></div>
+      <button id="add-button" class="button" type="button" onclick="addToBasket()" disabled>Add to basket</button>
+      <div id="basket-message" class="notice" role="status" hidden></div>
+      <h3>Basket</h3>
+      <div id="basket-items" aria-live="polite"></div>
+      <p><strong id="basket-total">Total: €0.00</strong></p>
       <div class="formgrid">
-        <div class="field" id="donation-field" hidden><label for="donation-amount">Donation amount</label><input id="donation-amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Enter donation amount" oninput="clearPreview()"></div>
         <div class="field"><label for="payment-method">Payment method</label><select id="payment-method" onchange="clearPreview()"><option value="">Select method</option><option>Cash</option><option>Card</option><option>Bank transfer</option><option>Other</option></select></div>
       </div>
       <div id="preview" class="selected" hidden></div><div id="preview-message" class="notice" role="status" hidden></div>
@@ -31,7 +36,7 @@
     </section>
   </main>
   <script>
-    let productList=[];let selectedProduct=null;let selectedBowler=null;let lookupVersion=0;
+    let productList=[];let selectedProduct=null;let selectedBowler=null;let lookupVersion=0;let previewVersion=0;let basket=[];let currentCategory=null;
     function euro(value){return new Intl.NumberFormat('en-GB',{style:'currency',currency:'EUR'}).format(value||0)}
     function categoryKey(value){return String(value||'Uncategorised').trim().toUpperCase()}
     function loadProducts(){
@@ -41,10 +46,9 @@
     function buildTabs(){
       const tabs=document.getElementById('tabs');tabs.replaceChildren();tabs.hidden=false;const categories=[];
       productList.forEach(function(product){const label=String(product.stockCategory||'Uncategorised').trim(),key=categoryKey(label);if(!categories.some(function(item){return item.key===key}))categories.push({label:label,key:key})});
-      categories.sort(function(a,b){return a.label.localeCompare(b.label)});addTab('All products',null);categories.forEach(function(item){addTab(item.label,item.key)});tabs.firstChild.setAttribute('aria-selected','true');renderProducts(null);
-      function addTab(label,key){const button=document.createElement('button');button.type='button';button.className='tab';button.textContent=label;button.setAttribute('aria-selected','false');button.addEventListener('click',function(){tabs.querySelectorAll('.tab').forEach(function(tab){tab.setAttribute('aria-selected','false')});button.setAttribute('aria-selected','true');renderProducts(key)});tabs.appendChild(button)}
+      categories.sort(function(a,b){return a.label.localeCompare(b.label)});currentCategory=null;addTab('All products',null);categories.forEach(function(item){addTab(item.label,item.key)});tabs.firstChild.setAttribute('aria-selected','true');renderProducts(currentCategory);
+      function addTab(label,key){const button=document.createElement('button');button.type='button';button.className='tab';button.textContent=label;button.setAttribute('aria-selected','false');button.addEventListener('click',function(){currentCategory=key;tabs.querySelectorAll('.tab').forEach(function(tab){tab.setAttribute('aria-selected','false')});button.setAttribute('aria-selected','true');renderProducts(currentCategory)});tabs.appendChild(button)}
     }
-    function needsBowler(product){return !isDonation(product)}
     function isPay2Play(product){return /PAY\s*2\s*PLAY|PAY2PLAY/i.test(product.name+' '+product.productId)}
     function isMatFee(product){return !isPay2Play(product)&&/MAT\s*FEE/i.test(product.stockCategory+' '+product.incomeCategory+' '+product.name)}
     function isDonation(product){return /DONATION/i.test(product.stockCategory+' '+product.incomeCategory+' '+product.name)}
@@ -53,38 +57,57 @@
       if(!shown.length){const p=document.createElement('p');p.className='muted';p.textContent='No products in this category.';container.appendChild(p);return}
       shown.forEach(function(product){const card=document.createElement('article');card.className='product';const name=document.createElement('h3');name.textContent=product.name||product.productId;card.appendChild(name);const id=document.createElement('div');id.className='id';id.textContent=product.productId;card.appendChild(id);const meta=document.createElement('div');meta.className='meta';meta.textContent='STCAT: '+product.stockCategory+(product.incomeCategory?' · CATEGORY: '+product.incomeCategory:'');card.appendChild(meta);const price=document.createElement('div');price.className='price';price.textContent=product.price===null?'Price not set':euro(product.price);card.appendChild(price);const button=document.createElement('button');button.type='button';button.className='button';button.textContent=selectedProduct&&selectedProduct.productId===product.productId?'Selected':'Select product';button.disabled=product.price===null&&!isDonation(product);button.addEventListener('click',function(){selectProduct(product)});card.appendChild(button);container.appendChild(card)})
     }
-    function clearPreview(){document.getElementById('preview').hidden=true;document.getElementById('preview-message').hidden=true}
-    function clearBowler(){lookupVersion++;selectedBowler=null;clearPreview();const output=document.getElementById('bowler-result'),button=document.getElementById('find-bowler');output.className='muted';output.textContent='';button.disabled=false;button.textContent='Find bowler'}
+    function clearPreview(){previewVersion++;document.getElementById('preview').hidden=true;document.getElementById('preview-message').hidden=true}
+    function basketMessage(text){const message=document.getElementById('basket-message');message.textContent=text;message.hidden=!text}
+    function renderBasket(){
+      const container=document.getElementById('basket-items');container.replaceChildren();
+      if(!basket.length)container.textContent='Basket is empty.';
+      basket.forEach(function(item,index){const line=document.createElement('div');line.className='selected';const label=document.createElement('span');label.textContent=(item.product.name||item.product.productId)+' ('+item.product.productId+') · '+euro(item.cents/100)+' ';line.appendChild(label);const remove=document.createElement('button');remove.type='button';remove.className='button';remove.textContent='Remove';remove.setAttribute('aria-label','Remove '+(item.product.name||item.product.productId));remove.addEventListener('click',function(){basket.splice(index,1);clearPreview();basketMessage('');renderBasket()});line.appendChild(remove);container.appendChild(line)});
+      document.getElementById('basket-total').textContent='Total: '+euro(basket.reduce(function(sum,item){return sum+item.cents},0)/100);
+      document.getElementById('preview-button').disabled=!basket.length;
+    }
+    function clearBowler(){lookupVersion++;selectedBowler=null;const hadItems=basket.length>0;basket=[];selectedProduct=null;clearPreview();renderBasket();document.getElementById('add-button').disabled=true;document.getElementById('selection').textContent='Select a product above to begin.';document.getElementById('donation-field').hidden=true;if(hadItems)basketMessage('Basket cleared because the bowler changed.');const output=document.getElementById('bowler-result'),button=document.getElementById('find-bowler');output.className='muted';output.textContent='';button.disabled=false;button.textContent='Find bowler';renderProducts(currentCategory)}
     function selectProduct(product){
       clearPreview();
-      if(needsBowler(product)&&!selectedBowler){const output=document.getElementById('bowler-result');output.className='error';output.textContent='Find and confirm the bowler before selecting this product.';document.getElementById('bowler-query').focus();return}
-      selectedProduct=product;document.getElementById('donation-field').hidden=!isDonation(product);document.getElementById('donation-amount').value='';document.getElementById('selection').className='selected';document.getElementById('selection').textContent='Selected: '+(product.name||product.productId)+' ('+product.productId+') · '+(isDonation(product)?'Donation amount entered by cashier':(product.price===null?'Price not set':euro(product.price)));document.getElementById('preview-button').disabled=false;renderProducts(null)
+      if(!selectedBowler){const output=document.getElementById('bowler-result');output.className='error';output.textContent='Find and confirm the bowler before selecting this product.';document.getElementById('bowler-query').focus();return}
+      basketMessage('');selectedProduct=product;document.getElementById('donation-field').hidden=!isDonation(product);document.getElementById('donation-amount').value='';document.getElementById('selection').className='selected';document.getElementById('selection').textContent='Selected: '+(product.name||product.productId)+' ('+product.productId+') · '+(isDonation(product)?'Donation amount entered by cashier':(product.price===null?'Price not set':euro(product.price)));document.getElementById('add-button').disabled=false;renderProducts(currentCategory)
+    }
+    function addToBasket(){
+      if(!selectedBowler||!selectedProduct){basketMessage('Find a bowler and select a product first.');return}
+      if(isMatFee(selectedProduct)&&basket.some(function(item){return isMatFee(item.product)})){basketMessage('Only one Mat Fee plan can be reviewed in a basket. Remove the existing plan first.');return}
+      const raw=isDonation(selectedProduct)?document.getElementById('donation-amount').value:selectedProduct.price;
+      const amount=Number(raw),cents=Math.round(amount*100);
+      if(raw===null||raw===''||!Number.isFinite(amount)||amount<0||!Number.isSafeInteger(cents)||Math.abs(amount*100-cents)>0.000001||(isDonation(selectedProduct)&&cents===0)){basketMessage('Enter a valid amount in euros and cents.');return}
+      if(!Number.isSafeInteger(basket.reduce(function(sum,item){return sum+item.cents},0)+cents)){basketMessage('Basket total is too large.');return}
+      basket.push({product:selectedProduct,cents:cents});clearPreview();basketMessage('Added to basket.');renderBasket();
     }
     function findBowler(){
-      const input=document.getElementById('bowler-query'),output=document.getElementById('bowler-result'),button=document.getElementById('find-bowler'),version=++lookupVersion;selectedBowler=null;clearPreview();
+      clearBowler();const input=document.getElementById('bowler-query'),output=document.getElementById('bowler-result'),button=document.getElementById('find-bowler'),version=++lookupVersion;
       if(!input.value.trim()){output.className='error';output.textContent='Enter bowler details.';return}button.disabled=true;button.textContent='Searching…';output.className='muted';output.textContent='Searching…';
       google.script.run.withSuccessHandler(function(result){if(version!==lookupVersion)return;button.disabled=false;button.textContent='Find bowler';if(!result||!result.ok||!result.data||!result.data.found||!result.data.bowlerId){output.className='error';output.textContent=(result&&result.message)||'Bowler was not found.';return}selectedBowler=result.data;output.className='success';output.textContent='Found: '+(selectedBowler.name||'')+' ('+selectedBowler.bowlerId+'). Current plan: '+(selectedBowler.productName||selectedBowler.productId||'not specified')+(selectedBowler.dueDate?' · Due '+selectedBowler.dueDate:'')}).withFailureHandler(function(error){if(version!==lookupVersion)return;button.disabled=false;button.textContent='Find bowler';output.className='error';output.textContent='Lookup failed: '+error.message}).lookupDemoBowler(input.value,'');
     }
     function showPreview(){
       const message=document.getElementById('preview-message'),box=document.getElementById('preview');message.hidden=true;
       function showMessage(text,success){message.hidden=false;message.className='notice'+(success?' success':'');message.textContent=text}
-      if(!selectedProduct){showMessage('Select a product first.');return}if(needsBowler(selectedProduct)&&!selectedBowler){showMessage('Find and confirm the bowler before reviewing this payment.');return}
+      if(!basket.length){showMessage('Add a product to the basket first.');return}if(!selectedBowler){showMessage('Find and confirm the bowler before reviewing this payment.');return}
       const method=document.getElementById('payment-method').value;if(!method){showMessage('Select a payment method.');return}
-      let amount=selectedProduct.price;if(isDonation(selectedProduct)){amount=Number(document.getElementById('donation-amount').value);if(!isFinite(amount)||amount<=0){showMessage('Enter a donation amount greater than zero.');return}}
-      if(!isDonation(selectedProduct)&&(amount===null||!isFinite(Number(amount))||Number(amount)<0)){showMessage('The catalogue price is missing or invalid; ask a manager to correct ProductTypes.');return}
-      const rows=[['Product',(selectedProduct.name||selectedProduct.productId)+' ('+selectedProduct.productId+')'],['Amount',euro(Number(amount))],['Payment method',method]];
+      const version=++previewVersion,planItem=basket.find(function(item){return isMatFee(item.product)}),plan=planItem&&planItem.product;
+      const rows=basket.map(function(item){return ['Product',(item.product.name||item.product.productId)+' ('+item.product.productId+') · '+euro(item.cents/100)]});
+      rows.push(['Total',euro(basket.reduce(function(sum,item){return sum+item.cents},0)/100)],['Payment method',method]);
       const currentProductId=String(selectedBowler&&selectedBowler.productId||'').trim();
-      const isPlanChange=!!(selectedBowler&&isMatFee(selectedProduct)&&currentProductId&&currentProductId.toUpperCase()!==String(selectedProduct.productId).trim().toUpperCase());
-      if(selectedBowler){rows.push(['Bowler',(selectedBowler.name||'')+' ('+selectedBowler.bowlerId+')'],['Current plan status',selectedBowler.planStatus||'Check required']);if(isPay2Play(selectedProduct)){rows.push(['Covers','This session only'],['Plan','Does not renew or change a Mat Fee plan, and no Mat Fee discount applies.'])}else if(isMatFee(selectedProduct)){rows.push(['Start rule',selectedProduct.coverageStartRule||'Not set']);if(isPlanChange)rows.push(['Plan change','Current: '+(selectedBowler.productName||currentProductId)+' ('+currentProductId+'); selected: '+(selectedProduct.name||selectedProduct.productId)+' ('+selectedProduct.productId+'). This is a different Mat Fee plan.'])}}
+      const isPlanChange=!!(plan&&currentProductId&&currentProductId.toUpperCase()!==String(plan.productId).trim().toUpperCase());
+      rows.push(['Bowler',(selectedBowler.name||'')+' ('+selectedBowler.bowlerId+')'],['Current plan status',selectedBowler.planStatus||'Check required']);
+      if(basket.some(function(item){return isPay2Play(item.product)}))rows.push(['Pay2Play','This session only; does not renew or change a Mat Fee plan, and no Mat Fee discount applies.']);
+      if(plan){rows.push(['Start rule',plan.coverageStartRule||'Not set']);if(isPlanChange)rows.push(['Plan change','Current: '+(selectedBowler.productName||currentProductId)+' ('+currentProductId+'); selected: '+(plan.name||plan.productId)+' ('+plan.productId+'). This is a different Mat Fee plan.'])}
       function render(){box.replaceChildren();rows.forEach(function(item){const line=document.createElement('div');line.textContent=item[0]+': '+item[1];box.appendChild(line)});box.className='selected';box.hidden=false}
-      if(selectedBowler&&isMatFee(selectedProduct)){
-        const product=selectedProduct,bowler=selectedBowler;box.hidden=true;showMessage('Calculating plan dates…');
-        google.script.run.withSuccessHandler(function(c){if(product!==selectedProduct||bowler!==selectedBowler)return;if(c&&c.ok){rows.push(['Plan starts',c.startDate],['Next payment due',c.nextDue]);render();showMessage(isPlanChange?'Plan change identified. Cashier must confirm that this is the intended plan at renewal. No records have been changed.':'Payment preview ready. No records have been changed.',!isPlanChange)}else{rows.push(['Plan dates','Cannot calculate: '+((c&&c.message)||'unknown problem')+' Cashier review required.']);render();showMessage('Review needed before this plan can be posted. No records have been changed.')}}).withFailureHandler(function(e){if(product!==selectedProduct||bowler!==selectedBowler)return;rows.push(['Plan dates','Calculation failed: '+e.message]);render();showMessage('Review needed. No records have been changed.')}).previewDemoCoverage(product.coverageStartRule,bowler.dueDate,product.coverageMonths);
+      if(plan){
+        const bowler=selectedBowler;box.hidden=true;showMessage('Calculating plan dates…');
+        google.script.run.withSuccessHandler(function(c){if(version!==previewVersion)return;if(c&&c.ok){rows.push(['Plan starts',c.startDate],['Next payment due',c.nextDue]);render();showMessage(isPlanChange?'Plan change identified. Cashier must confirm that this is the intended plan at renewal. No records have been changed.':'Payment preview ready. No records have been changed.',!isPlanChange)}else{rows.push(['Plan dates','Cannot calculate: '+((c&&c.message)||'unknown problem')+' Cashier review required.']);render();showMessage('Review needed before this plan can be posted. No records have been changed.')}}).withFailureHandler(function(e){if(version!==previewVersion)return;rows.push(['Plan dates','Calculation failed: '+e.message]);render();showMessage('Review needed. No records have been changed.')}).previewDemoCoverage(plan.coverageStartRule,bowler.dueDate,plan.coverageMonths);
         return;
       }
       render();showMessage('Payment preview ready. No records have been changed.',true);
     }
-    loadProducts();
+    renderBasket();loadProducts();
   </script>
 </body>
 </html>
