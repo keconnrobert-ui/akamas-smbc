@@ -90,9 +90,12 @@ function markDemoAttendancePaid(attendanceId) {
     const activeColProduct = productHeaders.indexOf('ACTIVE');
     if (productIdCol < 0 || priceCol < 0) return { ok: false, code: 'PRODUCT_SCHEMA_MISMATCH', message: 'ProductTypes needs PRODUCTID and PRICE (or SHELFPRICE); no payment was posted.' };
 
+    const productNameCol = productHeaders.indexOf('NAME');
+    let productName = '';
     let amount = null;
     for (let i = 1; i < productValues.length; i++) {
       if (String(productValues[i][productIdCol] || '').trim().toUpperCase() !== productId.toUpperCase()) continue;
+      if (productNameCol >= 0) productName = String(productValues[i][productNameCol] || '').trim();
       if (activeColProduct >= 0 && !['TRUE', 'YES', 'ACTIVE', '1'].includes(String(productValues[i][activeColProduct] || '').trim().toUpperCase())) {
         return { ok: false, code: 'PRODUCT_INACTIVE', message: 'The attendance product is inactive; no payment was posted.' };
       }
@@ -122,7 +125,7 @@ function markDemoAttendancePaid(attendanceId) {
     const amountCol = findLedgerColumn(['SIGNEDAMOUNT', 'AMOUNT']);
     const userEmailCol = findLedgerColumn(['USEREMAIL', 'CREATEDBY']);
     const hashCol = findLedgerColumn(['TXNHASH']);
-    const noteCol = findLedgerColumn(['TXNNOTE', 'NOTE', 'DESCRIPTION']);
+    const noteCol = findLedgerColumn(['TXNOTE', 'TXNNOTE', 'NOTE', 'DESCRIPTION']);
     const statusLedgerCol = findLedgerColumn(['AUTHORISATIONSTATUS', 'RECONCILIATIONSTATUS', 'STATUS']);
     if ([ledgerIdCol, sourceTabCol, sourceTxnCol, sourceIdCol, typeCol, ledgerProductCol, txnDateCol, amountCol, userEmailCol, hashCol].some(function(index) { return index < 0; })) {
       return { ok: false, code: 'LEDGER_SCHEMA_MISMATCH', message: 'Ledger is missing required posting columns; no payment was posted.' };
@@ -130,24 +133,32 @@ function markDemoAttendancePaid(attendanceId) {
 
     // Reuse a receipt for this Attendance ID if a prior attempt wrote the Ledger row
     // but stopped before updating Attendance, preventing a duplicate charge on retry.
+    // Receipts rows are matched by the Attendance ID in TXNOTE; older QR rows used SOURCETAB=Attendance.
     let receiptId = '';
     for (let i = 1; i < ledgerValues.length; i++) {
-      if (String(ledgerValues[i][sourceTabCol] || '').trim().toUpperCase() === 'ATTENDANCE' &&
-          String(ledgerValues[i][sourceTxnCol] || '').trim().toUpperCase() === id.toUpperCase()) {
+      const tab = String(ledgerValues[i][sourceTabCol] || '').trim().toUpperCase();
+      const sourceTxn = String(ledgerValues[i][sourceTxnCol] || '').trim().toUpperCase();
+      if (tab === 'ATTENDANCE' && sourceTxn === id.toUpperCase()) {
         receiptId = String(ledgerValues[i][ledgerIdCol] || '').trim();
+        break;
+      }
+      if (tab === 'RECEIPTS' && /^RCP\d+$/.test(sourceTxn) && noteCol >= 0 &&
+          String(ledgerValues[i][sourceIdCol] || '').trim().toUpperCase() === bowlerId.toUpperCase() &&
+          String(ledgerValues[i][noteCol] || '').toUpperCase().split(/[^A-Z0-9]+/).indexOf(id.toUpperCase()) >= 0) {
+        receiptId = sourceTxn;
         break;
       }
     }
 
-    let ledgerSequence = null;
     if (!receiptId) {
-      ledgerSequence = RF_peekNextSequenceId('NEXTLEDGERID', 'LEDGER', 6);
+      const ledgerSequence = RF_peekNextSequenceId('NEXTLEDGERID', 'LEDGER', 6);
+      const receiptSequence = RF_peekNextSequenceId('NEXTRECEIPTID', 'RCP', 6);
       const now = new Date();
-      const txnHash = RF_generateTXNHASH('Attendance', id, bowlerId, email, now, now, amount, productId, 'RCP');
+      const txnHash = RF_generateTXNHASH('Receipts', receiptSequence.id, bowlerId, email, now, now, amount, productId, 'RCP');
       const ledgerRow = new Array(ledger.getLastColumn()).fill('');
       ledgerRow[ledgerIdCol] = ledgerSequence.id;
-      ledgerRow[sourceTabCol] = 'Attendance';
-      ledgerRow[sourceTxnCol] = id;
+      ledgerRow[sourceTabCol] = 'Receipts';
+      ledgerRow[sourceTxnCol] = receiptSequence.id;
       ledgerRow[sourceIdCol] = bowlerId;
       if (roleColLedger >= 0) ledgerRow[roleColLedger] = 'MEMBER';
       ledgerRow[typeCol] = 'RCP';
@@ -157,18 +168,19 @@ function markDemoAttendancePaid(attendanceId) {
       ledgerRow[amountCol] = amount;
       ledgerRow[userEmailCol] = email;
       ledgerRow[hashCol] = txnHash;
-      if (noteCol >= 0) ledgerRow[noteCol] = 'QR check-in payment settlement';
+      if (noteCol >= 0) ledgerRow[noteCol] = (productName || productId) + ' - QR check-in ' + id;
       if (statusLedgerCol >= 0) ledgerRow[statusLedgerCol] = 'PENDING';
-      receiptId = String(ledgerRow[ledgerIdCol]);
+      receiptId = receiptSequence.id;
       ledger.appendRow(ledgerRow);
       RF_commitSequenceId(ledgerSequence);
+      RF_commitSequenceId(receiptSequence);
       SpreadsheetApp.flush();
     }
 
     attendance.getRange(attendanceRowIndex + 1, ledgerLinkCol + 1).setValue(receiptId);
     attendance.getRange(attendanceRowIndex + 1, statusCol + 1).setValue('PAID');
     SpreadsheetApp.flush();
-    return { ok: true, code: 'PAYMENT_POSTED', message: 'Payment posted to Ledger and attendance marked PAID.', data: { attendanceId: id, paymentStatus: 'PAID', ledgerId: receiptId, productId: productId, amount: amount } };
+    return { ok: true, code: 'PAYMENT_POSTED', message: 'Payment posted to Ledger (receipt linked) and attendance marked PAID.', data: { attendanceId: id, paymentStatus: 'PAID', ledgerId: receiptId, productId: productId, amount: amount } };
   } catch (error) {
     return { ok: false, code: 'UPDATE_FAILED', message: 'Could not post payment: ' + error.message };
   } finally {

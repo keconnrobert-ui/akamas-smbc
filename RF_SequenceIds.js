@@ -16,7 +16,8 @@ function RF_peekNextSequenceId(configKey, prefix, width) {
   const rows = sheet.getDataRange().getValues();
   const targets = {
     NEXTLEDGERID: { sheet: 'Ledger', headers: ['LEDGERID'], prefix: 'LEDGER', pattern: /^(?:LEDGER|LEDG|LED|LDG)(\d+)$/ },
-    NEXTATTENDANCEID: { sheet: 'Attendance', headers: ['TRANSACTIONID', 'ATTENDANCEID', 'ATTID'], prefix: 'ATT', pattern: /^ATT(\d+)$/ }
+    NEXTATTENDANCEID: { sheet: 'Attendance', headers: ['TRANSACTIONID', 'ATTENDANCEID', 'ATTID'], prefix: 'ATT', pattern: /^ATT(\d+)$/ },
+    NEXTRECEIPTID: { sheet: 'Ledger', headers: ['SOURCETXNID'], prefix: 'RCP', pattern: /^RCP(\d+)$/ }
   };
   const target = targets[wanted];
   if (!target || prefix !== target.prefix) throw new Error('Unsupported sequence: ' + configKey);

@@ -45,7 +45,7 @@
         <article class="card"><div class="label">Ledger net</div><div class="value" id="net">—</div><div class="sub">Sum of signed ledger amounts</div></article>
       </div>
       <section><h2>Recent ledger activity</h2><div style="overflow-x:auto"><table><thead><tr><th>Ledger ID</th><th>Date</th><th>Type</th><th>Amount</th></tr></thead><tbody id="recent"></tbody></table></div></section>
-      <section style="margin-top:16px"><h2>Unpaid check-ins — cashier review</h2><p class="notice">Payment posting is paused while receipt and ledger links are being corrected.</p><button class="refresh" type="button" onclick="loadUnpaidCheckins()">Refresh unpaid list</button><div id="unpaid-message" class="muted" role="status">Loading unpaid check-ins…</div><div style="overflow-x:auto"><table><thead><tr><th>Attendance ID</th><th>Bowler</th><th>Session</th><th>Product</th><th>Status</th><th>Action</th></tr></thead><tbody id="unpaid-rows"></tbody></table></div></section>
+      <section style="margin-top:16px"><h2>Unpaid check-ins — cashier review</h2><button class="refresh" type="button" onclick="loadUnpaidCheckins()">Refresh unpaid list</button><div id="unpaid-message" class="muted" role="status">Loading unpaid check-ins…</div><div style="overflow-x:auto"><table><thead><tr><th>Attendance ID</th><th>Bowler</th><th>Session</th><th>Product</th><th>Status</th><th>Action</th></tr></thead><tbody id="unpaid-rows"></tbody></table></div></section>
       <div id="warnings"></div>
     </div>
     </main>
@@ -88,10 +88,21 @@
           const tr=document.createElement('tr');
           [row.attendanceId||'—',row.bowlerName?row.bowlerName+' ('+row.bowlerId+')':row.bowlerId,row.sessionDate||'—',row.productId||'—',row.paymentStatus].forEach(function(value){const td=document.createElement('td');td.textContent=value;tr.appendChild(td);});
           const action=document.createElement('td');
-          const button=document.createElement('button');button.type='button';button.className='paid-button';button.textContent='Posting paused';button.disabled=true;button.title='Payment posting is paused until receipt and ledger links are corrected.';
+          const button=document.createElement('button');button.type='button';button.className='paid-button';button.textContent='Mark paid';
+          if(!row.attendanceId){button.disabled=true;button.title='This row has no attendance ID';}
+          else button.addEventListener('click',function(){markAttendancePaid(row.attendanceId,button);});
           action.appendChild(button);tr.appendChild(action);body.appendChild(tr);
         });
       }).withFailureHandler(function(error){status.className='error';status.textContent='Could not load unpaid check-ins: '+error.message;}).getDemoUnpaidAttendance();
+    }
+    function markAttendancePaid(attendanceId,button){
+      if(!window.confirm('Post the payment for attendance '+attendanceId+' to the ledger and mark it PAID?'))return;
+      button.disabled=true;button.textContent='Posting…';
+      google.script.run.withSuccessHandler(function(result){
+        const status=document.getElementById('unpaid-message');
+        if(!result||!result.ok){status.className='error';status.textContent=(result&&result.message)||'Payment was not posted.';button.disabled=false;button.textContent='Mark paid';return;}
+        status.className='muted';status.textContent=result.message+(result.data&&result.data.ledgerId?' Receipt: '+result.data.ledgerId+'.':'');loadUnpaidCheckins();
+      }).withFailureHandler(function(error){button.disabled=false;button.textContent='Mark paid';const status=document.getElementById('unpaid-message');status.className='error';status.textContent='Could not post payment: '+error.message;}).markDemoAttendancePaid(attendanceId);
     }
   </script>
 </body>
