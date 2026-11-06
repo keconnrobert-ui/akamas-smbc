@@ -66,7 +66,9 @@ function lookupDemoBowler(identifier, sessionDate) {
   let dueText = '';
   if (dueValue instanceof Date && !isNaN(dueValue.getTime())) dueText = Utilities.formatDate(dueValue, timezone, 'yyyy-MM-dd');
   else if (dueValue) {
-    const parsed = new Date(dueValue);
+    const text = String(dueValue).trim();
+    const dmy = text.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/);
+    const parsed = dmy ? new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1])) : new Date(text);
     if (!isNaN(parsed.getTime())) dueText = Utilities.formatDate(parsed, timezone, 'yyyy-MM-dd');
   }
 
