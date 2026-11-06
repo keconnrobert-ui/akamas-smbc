@@ -30,6 +30,8 @@ function RF_coverageIso_(d) {
 
 function RF_coverageNormaliseRule_(rule) {
   var r = String(rule || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  var aliases = { 'startnextmonth': '1st next month', 'oneday pass': 'next day', 'oneday': 'next day' };
+  if (aliases[r]) r = aliases[r];
   for (var i = 0; i < RF_COVERAGE_RULES.length; i++) {
     if (RF_COVERAGE_RULES[i].toLowerCase() === r) return RF_COVERAGE_RULES[i];
   }
