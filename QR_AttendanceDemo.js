@@ -70,7 +70,8 @@ function processDemoBowlerCheckIn(identifier, sessionDate) {
       const index = findColumn(aliases);
       if (index >= 0) newRow[index] = value;
     };
-    const attendanceId = 'ATT' + Utilities.getUuid().replace(/-/g, '').slice(0, 8).toUpperCase();
+    const attendanceSequence = RF_peekNextSequenceId('NEXTATTENDANCEID', 'ATT', 6);
+    const attendanceId = attendanceSequence.id;
     const timestamp = new Date();
     setValue(['TRANSACTION_ID', 'ATTENDANCEID', 'ATTENDANCE_ID', 'ATTID'], attendanceId);
     setValue(['BOWLER_ID', 'BOWLERID', 'MEMBERID'], result.data.bowlerId);
@@ -81,6 +82,7 @@ function processDemoBowlerCheckIn(identifier, sessionDate) {
     setValue(['PAYMENTSTATUS', 'PAYMENT_STATUS', 'CHECKINSTATUS'], paymentStatus);
     setValue(['ENTRY_METHOD', 'ENTRYMETHOD'], 'MobileKiosk');
     sheet.appendRow(newRow);
+    RF_commitSequenceId(attendanceSequence);
     SpreadsheetApp.flush();
 
     return {
