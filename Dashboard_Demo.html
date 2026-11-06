@@ -6,13 +6,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Akamas SMBC — Dashboard</title>
   <style>
-    *{box-sizing:border-box}body{margin:0;background:#f1f5f9;color:#17243a;font:16px Arial,sans-serif}.wrap{max-width:1000px;margin:auto;padding:24px}.head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.head h1{margin:0;color:#1a365d}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:22px 0}.card,section{background:white;border:1px solid #dbe3ec;border-radius:14px;padding:18px;box-shadow:0 3px 12px #0f172a0b}.label{color:#64748b;font-size:12px;font-weight:bold;text-transform:uppercase}.value{margin-top:8px;font-size:30px;font-weight:bold;color:#1a365d}.sub{color:#64748b;font-size:13px;margin-top:5px}h2{font-size:19px;color:#1a365d}table{width:100%;border-collapse:collapse;text-align:left}th,td{padding:11px 8px;border-bottom:1px solid #e2e8f0}th{color:#64748b;font-size:12px;text-transform:uppercase}td:last-child,th:last-child{text-align:right}.amount{font-weight:bold}.notice{padding:12px;margin:12px 0;border-radius:9px;background:#fff7ed;color:#9a3412}.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.links a,.refresh,.paid-button{background:#1a365d;color:white;text-decoration:none;padding:10px 14px;border:0;border-radius:9px;font-weight:bold;cursor:pointer}.paid-button:disabled,.refresh:disabled{opacity:.6;cursor:wait}.error{color:#991b1b}.muted{color:#64748b}.refresh{margin:0 0 12px;min-height:44px}.paid-button{white-space:nowrap}
+    *{box-sizing:border-box}body{margin:0;background:#f1f5f9;color:#17243a;font:16px Arial,sans-serif}.app{max-width:1440px;min-height:100vh;margin:auto;display:grid;grid-template-columns:260px minmax(0,1fr)}.sidebar{background:#10233f;color:#fff;padding:24px 16px}.brand{margin:0 8px 24px;font-size:20px}.nav-title{margin:22px 8px 8px;color:#9fb3ca;font-size:12px;text-transform:uppercase;letter-spacing:.08em}.side-nav{display:grid;gap:5px}.side-nav a,.side-nav .planned{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:11px 10px;border-radius:8px;color:#e2e8f0;text-decoration:none}.side-nav a:hover,.side-nav a[aria-current=page]{background:#244466;color:#fff}.side-nav .planned{color:#c3cfdb}.badge{flex:none;padding:3px 7px;border-radius:10px;background:#dbeafe;color:#1e3a5f;font-size:11px;font-weight:bold}.content{min-width:0;padding:24px}.head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.head h1{margin:0;color:#1a365d}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:22px 0}.card,section{background:white;border:1px solid #dbe3ec;border-radius:14px;padding:18px;box-shadow:0 3px 12px #0f172a0b}.label{color:#64748b;font-size:12px;font-weight:bold;text-transform:uppercase}.value{margin-top:8px;font-size:30px;font-weight:bold;color:#1a365d}.sub{color:#64748b;font-size:13px;margin-top:5px}h2{font-size:19px;color:#1a365d}table{width:100%;border-collapse:collapse;text-align:left}th,td{padding:11px 8px;border-bottom:1px solid #e2e8f0}th{color:#64748b;font-size:12px;text-transform:uppercase}td:last-child,th:last-child{text-align:right}.amount{font-weight:bold}.notice{padding:12px;margin:12px 0;border-radius:9px;background:#fff7ed;color:#9a3412}.refresh,.paid-button{background:#1a365d;color:white;padding:10px 14px;border:0;border-radius:9px;font-weight:bold;cursor:pointer}.paid-button:disabled,.refresh:disabled{opacity:.6;cursor:wait}.error{color:#991b1b}.muted{color:#64748b}.refresh{margin:0 0 12px;min-height:44px}.paid-button{white-space:nowrap}@media(max-width:760px){.app{grid-template-columns:1fr}.sidebar{padding:14px}.brand{margin:2px 6px 12px}.nav-title{margin-top:14px}.side-nav{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}.content{padding:16px}}
   </style>
 </head>
 <body>
-  <main class="wrap">
-    <header class="head"><h1>🎳 Akamas SMBC Dashboard</h1></header>
-    <nav class="links" aria-label="Demo navigation"><a id="reception-link" hidden>Reception QR display</a><a id="checkin-link" hidden>Bowler check-in</a><a id="cashier-link" hidden>Cashier basket</a></nav>
+  <div class="app">
+    <aside class="sidebar">
+      <h1 class="brand">🎳 Akamas SMBC</h1>
+      <nav class="side-nav" aria-label="Main navigation">
+        <div class="nav-title">Current demo</div>
+        <a href="#" aria-current="page">Dashboard</a>
+        <a id="reception-link" hidden>QR code generator for the day</a>
+        <a id="checkin-link" hidden>Bowler check-in</a>
+        <a id="cashier-link" hidden>Cashier basket <span class="badge">Preview only</span></a>
+        <div class="nav-title">Processes planned by 31 December</div>
+        <div class="planned">Bowler Registration Screen <span class="badge">Planned</span></div>
+        <div class="planned">Cashier collection: Pay2Play and overdue bowler fees <span class="badge">Planned</span></div>
+      </nav>
+    </aside>
+    <main class="content">
+    <header class="head"><h1>Dashboard</h1></header>
     <div id="navigation-message" class="muted" role="status">Loading navigation…</div>
     <div id="message" class="muted" role="status">Loading dashboard…</div>
     <div id="dashboard" hidden>
@@ -27,7 +40,8 @@
       <section style="margin-top:16px"><h2>Unpaid check-ins — cashier review</h2><p class="notice">Payment posting is paused while receipt and ledger links are being corrected.</p><button class="refresh" type="button" onclick="loadUnpaidCheckins()">Refresh unpaid list</button><div id="unpaid-message" class="muted" role="status">Loading unpaid check-ins…</div><div style="overflow-x:auto"><table><thead><tr><th>Attendance ID</th><th>Bowler</th><th>Session</th><th>Product</th><th>Status</th><th>Action</th></tr></thead><tbody id="unpaid-rows"></tbody></table></div></section>
       <div id="warnings"></div>
     </div>
-  </main>
+    </main>
+  </div>
   <script>
     function euro(value){return new Intl.NumberFormat('en-GB',{style:'currency',currency:'EUR'}).format(value||0)}
     google.script.run.withSuccessHandler(function(links){

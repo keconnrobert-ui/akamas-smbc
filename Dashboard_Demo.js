@@ -101,3 +101,13 @@ function getDashboardDemo() {
     .setTitle('Akamas SMBC — Demo Dashboard')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
+
+/** Returns web-app URLs used by the demo navigation. */
+function getDashboardDemoLinks() {
+  const baseUrl = ScriptApp.getService().getUrl();
+  if (!baseUrl) throw new Error('Deploy the web app before loading demo navigation.');
+  return {
+    reception: baseUrl + '?page=reception',
+    checkin: baseUrl + '?page=checkin'
+  };
+}
