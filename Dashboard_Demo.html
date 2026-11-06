@@ -12,7 +12,8 @@
 <body>
   <main class="wrap">
     <header class="head"><h1>🎳 Akamas SMBC Dashboard</h1></header>
-    <nav class="links"><a id="reception-link" href="#">Reception QR display</a><a id="checkin-link" href="#">Bowler check-in</a></nav>
+    <nav class="links" aria-label="Demo navigation"><a id="reception-link" hidden>Reception QR display</a><a id="checkin-link" hidden>Bowler check-in</a><a id="cashier-link" hidden>Cashier basket</a></nav>
+    <div id="navigation-message" class="muted" role="status">Loading navigation…</div>
     <div id="message" class="muted" role="status">Loading dashboard…</div>
     <div id="dashboard" hidden>
       <div class="cards">
@@ -23,13 +24,21 @@
         <article class="card"><div class="label">Ledger net</div><div class="value" id="net">—</div><div class="sub">Sum of signed ledger amounts</div></article>
       </div>
       <section><h2>Recent ledger activity</h2><div style="overflow-x:auto"><table><thead><tr><th>Ledger ID</th><th>Date</th><th>Type</th><th>Amount</th></tr></thead><tbody id="recent"></tbody></table></div></section>
-      <section style="margin-top:16px"><h2>Unpaid check-ins — cashier review</h2><button class="refresh" type="button" onclick="loadUnpaidCheckins()">Refresh unpaid list</button><div id="unpaid-message" class="muted" role="status">Loading unpaid check-ins…</div><div style="overflow-x:auto"><table><thead><tr><th>Attendance ID</th><th>Bowler</th><th>Session</th><th>Product</th><th>Status</th><th>Action</th></tr></thead><tbody id="unpaid-rows"></tbody></table></div></section>
+      <section style="margin-top:16px"><h2>Unpaid check-ins — cashier review</h2><p class="notice">Payment posting is paused while receipt and ledger links are being corrected.</p><button class="refresh" type="button" onclick="loadUnpaidCheckins()">Refresh unpaid list</button><div id="unpaid-message" class="muted" role="status">Loading unpaid check-ins…</div><div style="overflow-x:auto"><table><thead><tr><th>Attendance ID</th><th>Bowler</th><th>Session</th><th>Product</th><th>Status</th><th>Action</th></tr></thead><tbody id="unpaid-rows"></tbody></table></div></section>
       <div id="warnings"></div>
     </div>
   </main>
   <script>
     function euro(value){return new Intl.NumberFormat('en-GB',{style:'currency',currency:'EUR'}).format(value||0)}
-    google.script.run.withSuccessHandler(function(links){if(!links)return;document.getElementById('reception-link').href=links.reception;document.getElementById('checkin-link').href=links.checkin;}).getDashboardDemoLinks();
+    google.script.run.withSuccessHandler(function(links){
+      const status=document.getElementById('navigation-message');
+      try{
+        if(!links||!links.reception||!links.checkin)throw new Error('Navigation links are unavailable.');
+        const cashier=new URL(links.reception);cashier.search='';cashier.hash='';cashier.searchParams.set('page','revenueproducts');
+        [['reception-link',links.reception],['checkin-link',links.checkin],['cashier-link',cashier.href]].forEach(function(link){const element=document.getElementById(link[0]);element.href=link[1];element.hidden=false});
+        status.hidden=true;
+      }catch(error){status.className='error';status.textContent='Could not load navigation: '+error.message}
+    }).withFailureHandler(function(error){const status=document.getElementById('navigation-message');status.className='error';status.textContent='Could not load navigation: '+error.message}).getDashboardDemoLinks();
     google.script.run.withSuccessHandler(function(result){
       const message=document.getElementById('message');
       if(!result||!result.ok){message.className='error';message.textContent='Dashboard data could not be loaded.';return;}
@@ -57,21 +66,10 @@
           const tr=document.createElement('tr');
           [row.attendanceId||'—',row.bowlerName?row.bowlerName+' ('+row.bowlerId+')':row.bowlerId,row.sessionDate||'—',row.productId||'—',row.paymentStatus].forEach(function(value){const td=document.createElement('td');td.textContent=value;tr.appendChild(td);});
           const action=document.createElement('td');
-          const button=document.createElement('button');button.type='button';button.className='paid-button';button.textContent='Mark paid';
-          if(!row.attendanceId){button.disabled=true;button.title='This row has no attendance ID';}
-          else button.addEventListener('click',function(){markAttendancePaid(row.attendanceId,button);});
+          const button=document.createElement('button');button.type='button';button.className='paid-button';button.textContent='Posting paused';button.disabled=true;button.title='Payment posting is paused until receipt and ledger links are corrected.';
           action.appendChild(button);tr.appendChild(action);body.appendChild(tr);
         });
       }).withFailureHandler(function(error){status.className='error';status.textContent='Could not load unpaid check-ins: '+error.message;}).getDemoUnpaidAttendance();
-    }
-    function markAttendancePaid(attendanceId,button){
-      if(!window.confirm('Mark attendance '+attendanceId+' as PAID? This does not create a ledger entry.'))return;
-      button.disabled=true;button.textContent='Updating…';
-      google.script.run.withSuccessHandler(function(result){
-        const status=document.getElementById('unpaid-message');
-        if(!result||!result.ok){status.className='error';status.textContent=(result&&result.message)||'Payment status was not updated.';button.disabled=false;button.textContent='Mark paid';return;}
-        status.className='muted';status.textContent=result.message;loadUnpaidCheckins();
-      }).withFailureHandler(function(error){button.disabled=false;button.textContent='Mark paid';const status=document.getElementById('unpaid-message');status.className='error';status.textContent='Could not update attendance: '+error.message;}).markDemoAttendancePaid(attendanceId);
     }
   </script>
 </body>

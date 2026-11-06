@@ -10,6 +10,7 @@
 <body>
   <main class="wrap">
     <header class="head"><div><h1>Revenue Products</h1><p class="muted">Find the bowler first, then add products to the basket. Prices come from ProductTypes.</p></div><button class="refresh" type="button" onclick="loadProducts()">Refresh catalogue</button></header>
+    <nav aria-label="Demo navigation"><a id="dashboard-link" class="button" style="text-decoration:none" hidden>← Dashboard</a><span id="navigation-message" class="muted" role="status">Loading navigation…</span></nav>
     <section class="panel" aria-labelledby="bowler-title">
       <h2 id="bowler-title">Find bowler</h2>
       <div class="field"><label for="bowler-query">Bowler ID, name, telephone or email</label><input id="bowler-query" maxlength="100" autocomplete="off" placeholder="Enter bowler details" oninput="clearBowler()"><button class="button" id="find-bowler" type="button" style="margin-top:8px" onclick="findBowler()">Find bowler</button><div id="bowler-result" class="muted" role="status" style="margin-top:8px"></div></div>
@@ -107,6 +108,16 @@
       }
       render();showMessage('Payment preview ready. No records have been changed.',true);
     }
+    google.script.run.withSuccessHandler(function(links){
+      const status=document.getElementById('navigation-message');
+      try{
+        if(!links||!links.reception)throw new Error('Dashboard link is unavailable.');
+        const url=new URL(links.reception);url.search='';url.hash='';url.searchParams.set('page','dashboard');
+        const link=document.getElementById('dashboard-link');link.href=url.href;link.hidden=false;
+        link.addEventListener('click',function(event){if(basket.length&&!window.confirm('Leave the cashier page? The preview basket will be cleared.'))event.preventDefault()});
+        status.hidden=true;
+      }catch(error){status.className='error';status.textContent='Could not load navigation: '+error.message}
+    }).withFailureHandler(function(error){const status=document.getElementById('navigation-message');status.className='error';status.textContent='Could not load navigation: '+error.message}).getDashboardDemoLinks();
     renderBasket();loadProducts();
   </script>
 </body>
