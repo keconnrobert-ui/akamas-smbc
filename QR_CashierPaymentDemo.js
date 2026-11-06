@@ -63,8 +63,8 @@ function markDemoAttendancePaid(attendanceId) {
     let attendanceRowIndex = -1;
     for (let i = 1; i < attendanceValues.length; i++) {
       if (String(attendanceValues[i][attendanceIdCol] || '').trim().toUpperCase() === id.toUpperCase()) {
+        if (attendanceRowIndex >= 0) return { ok: false, code: 'DUPLICATE_ATTENDANCE_ID', message: 'Attendance ID is duplicated; ask a manager to investigate before posting.' };
         attendanceRowIndex = i;
-        break;
       }
     }
     if (attendanceRowIndex < 0) return { ok: false, code: 'ATTENDANCE_NOT_FOUND', message: 'No attendance record matches that ID.' };
@@ -75,7 +75,10 @@ function markDemoAttendancePaid(attendanceId) {
     if (existingStatus === 'PAID' && existingLedgerId) {
       return { ok: true, code: 'ALREADY_PAID', message: 'This attendance record is already paid and linked to a ledger receipt.', data: { attendanceId: id, paymentStatus: 'PAID', ledgerId: existingLedgerId } };
     }
-    if (existingStatus !== 'UNPAID' && existingStatus !== 'PAID') {
+    if (existingStatus === 'PAID') {
+      return { ok: false, code: 'ALREADY_PAID_NO_LINK', message: 'Attendance is already PAID without a receipt link. Check the record before posting; no payment was posted.' };
+    }
+    if (existingStatus !== 'UNPAID') {
       return { ok: false, code: 'INVALID_STATUS', message: 'Only UNPAID attendance records can be settled.' };
     }
 
@@ -127,32 +130,50 @@ function markDemoAttendancePaid(attendanceId) {
     const hashCol = findLedgerColumn(['TXNHASH']);
     const noteCol = findLedgerColumn(['TXNOTE', 'TXNNOTE', 'NOTE', 'DESCRIPTION']);
     const statusLedgerCol = findLedgerColumn(['AUTHORISATIONSTATUS', 'RECONCILIATIONSTATUS', 'STATUS']);
-    if ([ledgerIdCol, sourceTabCol, sourceTxnCol, sourceIdCol, typeCol, ledgerProductCol, txnDateCol, amountCol, userEmailCol, hashCol].some(function(index) { return index < 0; })) {
+    if ([ledgerIdCol, sourceTabCol, sourceTxnCol, sourceIdCol, typeCol, ledgerProductCol, txnDateCol, amountCol, userEmailCol, hashCol, noteCol].some(function(index) { return index < 0; })) {
       return { ok: false, code: 'LEDGER_SCHEMA_MISMATCH', message: 'Ledger is missing required posting columns; no payment was posted.' };
     }
 
     // Reuse a receipt for this Attendance ID if a prior attempt wrote the Ledger row
     // but stopped before updating Attendance, preventing a duplicate charge on retry.
     // Receipts rows are matched by the Attendance ID in TXNOTE; older QR rows used SOURCETAB=Attendance.
-    let receiptId = '';
+    const matches = [];
+    const noteSuffix = ' - QR CHECK-IN ' + id.toUpperCase();
     for (let i = 1; i < ledgerValues.length; i++) {
       const tab = String(ledgerValues[i][sourceTabCol] || '').trim().toUpperCase();
       const sourceTxn = String(ledgerValues[i][sourceTxnCol] || '').trim().toUpperCase();
-      if (tab === 'ATTENDANCE' && sourceTxn === id.toUpperCase()) {
-        receiptId = String(ledgerValues[i][ledgerIdCol] || '').trim();
-        break;
+      const legacy = tab === 'ATTENDANCE' && sourceTxn === id.toUpperCase();
+      const receipt = tab === 'RECEIPTS' && /^RCP\d+$/.test(sourceTxn) &&
+        String(ledgerValues[i][noteCol] || '').trim().toUpperCase().endsWith(noteSuffix);
+      if (legacy || receipt) {
+        if (String(ledgerValues[i][sourceIdCol] || '').trim().toUpperCase() !== bowlerId.toUpperCase() ||
+            String(ledgerValues[i][ledgerProductCol] || '').trim().toUpperCase() !== productId.toUpperCase() ||
+            String(ledgerValues[i][typeCol] || '').trim().toUpperCase() !== 'RCP') {
+          return { ok: false, code: 'RECEIPT_MISMATCH', message: 'An existing ledger entry for this attendance has different details. Ask a manager to investigate; no payment was posted.' };
+        }
+        matches.push(legacy ? String(ledgerValues[i][ledgerIdCol] || '').trim() : sourceTxn);
       }
-      if (tab === 'RECEIPTS' && /^RCP\d+$/.test(sourceTxn) && noteCol >= 0 &&
-          String(ledgerValues[i][sourceIdCol] || '').trim().toUpperCase() === bowlerId.toUpperCase() &&
-          String(ledgerValues[i][noteCol] || '').toUpperCase().split(/[^A-Z0-9]+/).indexOf(id.toUpperCase()) >= 0) {
-        receiptId = sourceTxn;
-        break;
-      }
+    }
+    if (matches.length > 1 || (matches.length === 1 && !matches[0])) {
+      return { ok: false, code: 'RECEIPT_AMBIGUOUS', message: 'Ledger links for this attendance are ambiguous. Ask a manager to investigate; no payment was posted.' };
+    }
+    let receiptId = matches.length ? matches[0] : '';
+    if (existingLedgerId && existingLedgerId.toUpperCase() !== receiptId.toUpperCase()) {
+      return { ok: false, code: 'RECEIPT_LINK_MISMATCH', message: 'The existing attendance receipt link could not be verified. Ask a manager to investigate; no payment was posted.' };
     }
 
     if (!receiptId) {
+      if (!/PAY\s*2\s*PLAY/i.test(productName + ' ' + productId)) {
+        return { ok: false, code: 'PLAN_PAYMENT_PAUSED', message: 'Mat Fee and other plan payments are paused until plan dates can be updated safely. No payment was posted.' };
+      }
       const ledgerSequence = RF_peekNextSequenceId('NEXTLEDGERID', 'LEDGER', 6);
       const receiptSequence = RF_peekNextSequenceId('NEXTRECEIPTID', 'RCP', 6);
+      for (let i = 1; i < attendanceValues.length; i++) {
+        const used = String(attendanceValues[i][ledgerLinkCol] || '').trim().toUpperCase().match(/^RCP(\d+)$/);
+        if (used && Number(used[1]) === receiptSequence.number) {
+          return { ok: false, code: 'RECEIPT_ID_USED', message: 'NEXTRECEIPTID is already used in Attendance. Ask a manager to check the counter; no payment was posted.' };
+        }
+      }
       const now = new Date();
       const txnHash = RF_generateTXNHASH('Receipts', receiptSequence.id, bowlerId, email, now, now, amount, productId, 'RCP');
       const ledgerRow = new Array(ledger.getLastColumn()).fill('');
@@ -171,9 +192,12 @@ function markDemoAttendancePaid(attendanceId) {
       if (noteCol >= 0) ledgerRow[noteCol] = (productName || productId) + ' - QR check-in ' + id;
       if (statusLedgerCol >= 0) ledgerRow[statusLedgerCol] = 'PENDING';
       receiptId = receiptSequence.id;
-      ledger.appendRow(ledgerRow);
+      // Reserve both numbers first. Failed writes may leave gaps, but cannot leave a
+      // newly posted receipt using counters that still point to the same IDs.
       RF_commitSequenceId(ledgerSequence);
       RF_commitSequenceId(receiptSequence);
+      SpreadsheetApp.flush();
+      ledger.appendRow(ledgerRow);
       SpreadsheetApp.flush();
     }
 
@@ -182,7 +206,7 @@ function markDemoAttendancePaid(attendanceId) {
     SpreadsheetApp.flush();
     return { ok: true, code: 'PAYMENT_POSTED', message: 'Payment posted to Ledger (receipt linked) and attendance marked PAID.', data: { attendanceId: id, paymentStatus: 'PAID', ledgerId: receiptId, productId: productId, amount: amount } };
   } catch (error) {
-    return { ok: false, code: 'UPDATE_FAILED', message: 'Could not post payment: ' + error.message };
+    return { ok: false, code: 'UPDATE_FAILED', message: 'Payment could not be completed: ' + error.message + '. A write may have succeeded; check Ledger and Attendance before retrying or taking payment again.' };
   } finally {
     try { lock.releaseLock(); } catch (ignored) {}
   }
