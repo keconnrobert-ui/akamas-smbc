@@ -139,11 +139,13 @@ function markDemoAttendancePaid(attendanceId) {
       }
     }
 
+    let ledgerSequence = null;
     if (!receiptId) {
+      ledgerSequence = RF_peekNextSequenceId('NEXTLEDGERID', 'LEDGER', 6);
       const now = new Date();
       const txnHash = RF_generateTXNHASH('Attendance', id, bowlerId, email, now, now, amount, productId, 'RCP');
       const ledgerRow = new Array(ledger.getLastColumn()).fill('');
-      ledgerRow[ledgerIdCol] = RF_generateLedgerId();
+      ledgerRow[ledgerIdCol] = ledgerSequence.id;
       ledgerRow[sourceTabCol] = 'Attendance';
       ledgerRow[sourceTxnCol] = id;
       ledgerRow[sourceIdCol] = bowlerId;
@@ -159,6 +161,7 @@ function markDemoAttendancePaid(attendanceId) {
       if (statusLedgerCol >= 0) ledgerRow[statusLedgerCol] = 'PENDING';
       receiptId = String(ledgerRow[ledgerIdCol]);
       ledger.appendRow(ledgerRow);
+      RF_commitSequenceId(ledgerSequence);
       SpreadsheetApp.flush();
     }
 

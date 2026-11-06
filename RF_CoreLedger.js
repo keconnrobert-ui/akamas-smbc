@@ -64,33 +64,12 @@ function RF_validateTXNHASH(row, userEmail) {
   return expectedHash === String(row.TXNHASH || row.txnHash || '');
 }
 
+// NEXTLEDGERID holds the bare number of the next ID to issue (see RF_SequenceIds.js).
+// This issues and advances immediately; the QR payment path uses peek/commit instead.
 function RF_generateLedgerId() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const configSheet = ss.getSheetByName('System_Config') || ss.getSheetByName('System Config');
-  if (!configSheet) {
-    throw new Error('System_Config sheet not found');
-  }
-
-  const rows = configSheet.getDataRange().getValues();
-  let rowIndex = -1;
-  let nextNumber = 1;
-
-  for (let i = 1; i < rows.length; i++) {
-    const key = (rows[i][0] || '').toString().trim();
-    if (key === 'NEXT_LEDGERID' || key === 'NEXTLEDGERID') {
-      rowIndex = i;
-      nextNumber = parseInt((rows[i][1] || '1').toString().replace(/\D/g, ''), 10) + 1;
-      break;
-    }
-  }
-
-  if (rowIndex === -1) {
-    throw new Error('NEXT_LEDGERID not found in System_Config');
-  }
-
-  const ledgerId = 'LEDG' + String(nextNumber).padStart(6, '0');
-  configSheet.getRange(rowIndex + 1, 2).setValue(ledgerId);
-  return ledgerId;
+  const sequence = RF_peekNextSequenceId('NEXTLEDGERID', 'LEDGER', 6);
+  RF_commitSequenceId(sequence);
+  return sequence.id;
 }
 
 function RF_generateSourceTxnId(prefix) {
