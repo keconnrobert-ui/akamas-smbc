@@ -73,8 +73,14 @@
       let amount=selectedProduct.price;if(isDonation(selectedProduct)){amount=Number(document.getElementById('donation-amount').value);if(!isFinite(amount)||amount<=0){showMessage('Enter a donation amount greater than zero.');return}}
       if(!isDonation(selectedProduct)&&(amount===null||!isFinite(Number(amount))||Number(amount)<0)){showMessage('The catalogue price is missing or invalid; ask a manager to correct ProductTypes.');return}
       const rows=[['Product',(selectedProduct.name||selectedProduct.productId)+' ('+selectedProduct.productId+')'],['Amount',euro(Number(amount))],['Payment method',method]];
-      if(selectedBowler){rows.push(['Bowler',(selectedBowler.name||'')+' ('+selectedBowler.bowlerId+')'],['Current plan status',selectedBowler.planStatus||'Check required']);if(isPay2Play(selectedProduct)){rows.push(['Covers','This session only'],['Plan','Does not renew or change a Mat Fee plan, and no Mat Fee discount applies.'])}else if(isMatFee(selectedProduct)){rows.push(['Renewal dates','Not calculated in this preview; cashier review required.'])}}
-      box.replaceChildren();rows.forEach(function(item){const line=document.createElement('div');line.textContent=item[0]+': '+item[1];box.appendChild(line)});box.className='selected';box.hidden=false;showMessage('Payment preview ready. No records have been changed.',true);
+      if(selectedBowler){rows.push(['Bowler',(selectedBowler.name||'')+' ('+selectedBowler.bowlerId+')'],['Current plan status',selectedBowler.planStatus||'Check required']);if(isPay2Play(selectedProduct)){rows.push(['Covers','This session only'],['Plan','Does not renew or change a Mat Fee plan, and no Mat Fee discount applies.'])}else if(isMatFee(selectedProduct)){rows.push(['Start rule',selectedProduct.coverageStartRule||'Not set'])}}
+      function render(){box.replaceChildren();rows.forEach(function(item){const line=document.createElement('div');line.textContent=item[0]+': '+item[1];box.appendChild(line)});box.className='selected';box.hidden=false}
+      if(selectedBowler&&isMatFee(selectedProduct)){
+        const product=selectedProduct,bowler=selectedBowler;box.hidden=true;showMessage('Calculating plan dates…');
+        google.script.run.withSuccessHandler(function(c){if(product!==selectedProduct||bowler!==selectedBowler)return;if(c&&c.ok){rows.push(['Plan starts',c.startDate],['Next payment due',c.nextDue]);render();showMessage('Payment preview ready. No records have been changed.',true)}else{rows.push(['Plan dates','Cannot calculate: '+((c&&c.message)||'unknown problem')+' Cashier review required.']);render();showMessage('Review needed before this plan can be posted. No records have been changed.')}}).withFailureHandler(function(e){if(product!==selectedProduct||bowler!==selectedBowler)return;rows.push(['Plan dates','Calculation failed: '+e.message]);render();showMessage('Review needed. No records have been changed.')}).previewDemoCoverage(product.coverageStartRule,bowler.dueDate,product.coverageMonths);
+        return;
+      }
+      render();showMessage('Payment preview ready. No records have been changed.',true);
     }
     loadProducts();
   </script>

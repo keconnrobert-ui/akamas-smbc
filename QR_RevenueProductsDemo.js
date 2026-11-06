@@ -20,6 +20,7 @@ function getDemoRevenueProducts() {
   const activeCol = find(['ACTIVE']);
   const coverageCol = find(['COVERAGEMONTHS']);
   const sessionsCol = find(['SESSIONSPERCYCLE']);
+  const ruleCol = find(['COVERAGESTARTRULE']);
   if (idCol < 0 || nameCol < 0 || stockCatCol < 0 || priceCol < 0) {
     return { ok: false, message: 'ProductTypes needs PRODUCTID, NAME, STCAT and PRICE (or SHELFPRICE) headers.', data: [] };
   }
@@ -43,7 +44,8 @@ function getDemoRevenueProducts() {
       stockCategoryKey: normalize(rawCategory),
       price: isFinite(parsedPrice) ? parsedPrice : null,
       coverageMonths: coverageMonths,
-      sessionsPerCycle: sessionsPerCycle
+      sessionsPerCycle: sessionsPerCycle,
+      coverageStartRule: ruleCol < 0 ? '' : String(row[ruleCol] || '').trim()
     });
   }
   return { ok: true, message: products.length ? 'Active products loaded from ProductTypes.' : 'No active products found.', data: products };
@@ -54,4 +56,10 @@ function getCashierRevenueProductsPage() {
   return HtmlService.createHtmlOutputFromFile('Cashier_RevenueProducts')
     .setTitle('Akamas SMBC — Revenue Products')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+/** Read-only coverage preview for the cashier screen. */
+function previewDemoCoverage(rule, dueDate, months) {
+  const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  return RF_calculateCoverage(rule, dueDate, today, months);
 }
