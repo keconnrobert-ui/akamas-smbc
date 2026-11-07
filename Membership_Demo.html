@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Akamas SMBC — Membership Maintenance</title>
+  <style>
+    [hidden]{display:none!important}
+    *{box-sizing:border-box}body{margin:0;background:#f1f5f9;color:#17243a;font:16px Arial,sans-serif}.wrap{max-width:1100px;margin:auto;padding:24px}h1,h2{color:#1a365d}.button{display:inline-block;background:#1a365d;color:#fff;text-decoration:none;padding:10px 14px;border:0;border-radius:8px;font-weight:bold;cursor:pointer}.layout{display:grid;grid-template-columns:minmax(210px,300px) minmax(0,1fr);gap:16px;margin-top:18px}.panel{background:#fff;border:1px solid #dbe3ec;border-radius:14px;padding:18px}.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.field label{display:block;font-weight:bold;margin-bottom:5px}.field input,.field textarea,#search{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}.field input[readonly]{background:#f1f5f9}.field textarea{min-height:75px;resize:vertical}.list{max-height:60vh;overflow:auto;margin-top:10px}.list button{display:block;text-align:left;width:100%;border:0;border-bottom:1px solid #e2e8f0;background:#fff;padding:12px;cursor:pointer;font:inherit}.list button[aria-pressed=true]{background:#dbeafe}.notice{background:#fff7ed;color:#9a3412;border-radius:8px;padding:12px}.muted{color:#64748b}.error{color:#991b1b}@media(max-width:700px){.wrap{padding:16px}.layout{grid-template-columns:1fr}.list{max-height:220px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>Membership Maintenance</h1>
+    <a id="dashboard-link" class="button" hidden>← Dashboard</a>
+    <span id="navigation-message" class="muted" role="status">Loading navigation…</span>
+    <p class="notice"><strong>Preview only:</strong> edits are not saved to the Members sheet. They are lost when you leave or choose another member.</p>
+    <div class="layout">
+      <section class="panel">
+        <h2>Members</h2>
+        <label for="search">Search by name or member ID</label>
+        <input id="search" type="search" autocomplete="off" placeholder="Search members">
+        <p id="status" class="muted" role="status">Loading members…</p>
+        <div id="member-list" class="list"></div>
+      </section>
+      <section class="panel">
+        <h2>Edit preview</h2>
+        <p id="selection" class="muted">Select a member from the list.</p>
+        <form id="member-form" hidden>
+          <div id="fields" class="fields"></div>
+          <p class="muted">Member ID and plan dates are shown for reference only. No changes are posted.</p>
+          <button type="button" id="reset" class="button">Discard preview edits</button>
+        </form>
+      </section>
+    </div>
+  </main>
+  <script>
+    const fields=[
+      ['MEMBERID','Member ID',true],['FULLNAME','Full name'],['STATUS','Status'],
+      ['TELEPHONE','Telephone'],['WHATSAPP','WhatsApp'],['EMAIL','Email'],
+      ['ADDRESSLINE1','Address line 1'],['ADDRESSLINE2','Address line 2'],['CITY','City'],
+      ['POSTCODE','Postcode'],['COUNTRY','Country'],['PRODUCTID','Product ID',true],
+      ['LASTPAIDDATE','Last paid date',true],['NEXTPAYMENTDUE','Next payment due',true],
+      ['LASTATTENDANCEDATE','Last attendance date',true],['ACTIVE','Active',true],['NOTES','Notes']
+    ];
+    let members=[],selected=-1,dirty=false;
+    const list=document.getElementById('member-list'),form=document.getElementById('member-form');
+    fields.forEach(function(field){
+      const wrapper=document.createElement('div'),label=document.createElement('label');
+      const input=document.createElement(field[0]==='NOTES'?'textarea':'input');
+      wrapper.className='field';label.textContent=field[1];label.htmlFor='field-'+field[0];
+      input.id=label.htmlFor;input.readOnly=!!field[2];input.addEventListener('input',function(){dirty=true});
+      wrapper.appendChild(label);wrapper.appendChild(input);document.getElementById('fields').appendChild(wrapper);
+    });
+    function renderList(){
+      const query=document.getElementById('search').value.trim().toLowerCase();list.replaceChildren();
+      let count=0;
+      members.forEach(function(member,index){
+        if(!(member.MEMBERID+' '+member.FULLNAME).toLowerCase().includes(query))return;
+        count++;const button=document.createElement('button');button.type='button';
+        button.textContent=(member.FULLNAME||'Unnamed')+' ('+member.MEMBERID+')';
+        button.setAttribute('aria-pressed',String(index===selected));
+        button.addEventListener('click',function(){selectMember(index)});list.appendChild(button);
+      });
+      if(!count){const text=document.createElement('p');text.className='muted';text.textContent='No matching members.';list.appendChild(text)}
+    }
+    function populate(){
+      fields.forEach(function(field){document.getElementById('field-'+field[0]).value=members[selected][field[0]]});
+      dirty=false;form.hidden=false;document.getElementById('selection').textContent='Editing preview: '+(members[selected].FULLNAME||members[selected].MEMBERID);
+    }
+    function selectMember(index){
+      if(index===selected)return;
+      if(dirty&&!window.confirm('Discard the unsaved preview edits and select another member?'))return;
+      selected=index;populate();renderList();
+    }
+    document.getElementById('search').addEventListener('input',renderList);
+    document.getElementById('reset').addEventListener('click',function(){if(!dirty||window.confirm('Discard the preview edits?'))populate()});
+    form.addEventListener('submit',function(event){event.preventDefault()});
+    window.addEventListener('beforeunload',function(event){if(dirty){event.preventDefault();event.returnValue=''}});
+    google.script.run.withSuccessHandler(function(links){
+      const status=document.getElementById('navigation-message');
+      try{
+        if(!links||!links.reception)throw new Error('Dashboard link is unavailable.');
+        const url=new URL(links.reception);url.search='';url.hash='';url.searchParams.set('page','dashboard');
+        const link=document.getElementById('dashboard-link');link.href=url.href;link.hidden=false;status.hidden=true;
+        link.addEventListener('click',function(event){if(dirty&&!window.confirm('Leave and discard the unsaved preview edits?'))event.preventDefault();else dirty=false});
+      }catch(error){status.className='error';status.textContent='Could not load navigation: '+error.message}
+    }).withFailureHandler(function(error){const status=document.getElementById('navigation-message');status.className='error';status.textContent='Could not load navigation: '+error.message}).getDashboardDemoLinks();
+    google.script.run.withSuccessHandler(function(result){
+      const status=document.getElementById('status');
+      if(!result||!result.ok){status.className='error';status.textContent=(result&&result.message)||'Could not load members.';return}
+      members=result.data;status.textContent=result.message;renderList();
+    }).withFailureHandler(function(error){const status=document.getElementById('status');status.className='error';status.textContent='Could not load members: '+error.message}).getDemoMembersForMaintenance();
+  </script>
+</body>
+</html>

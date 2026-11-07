@@ -81,6 +81,8 @@ function doGet(e) {
         return getDashboard();
       case 'revenueproducts':
         return getCashierRevenueProductsPage();
+      case 'membership':
+        return getDemoMembershipPage();
       case 'kiosk':
       case 'mobilekiosk':
       case 'checkin':
