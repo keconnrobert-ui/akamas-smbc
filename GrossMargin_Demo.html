@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Akamas SMBC — Gross Margin</title>
+  <style>
+    [hidden]{display:none!important}*{box-sizing:border-box}body{margin:0;background:#f1f5f9;color:#17243a;font:16px Arial,sans-serif}.wrap{max-width:1100px;margin:auto;padding:24px}h1,h2{color:#1a365d}.button{display:inline-block;background:#1a365d;color:#fff;text-decoration:none;padding:10px 14px;border:0;border-radius:8px;font-weight:bold;cursor:pointer}.notice{padding:14px;background:#fff7ed;color:#9a3412;border-radius:9px;line-height:1.5}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:18px 0}.card,section{background:#fff;border:1px solid #dbe3ec;border-radius:12px;padding:18px}.label{color:#64748b;font-size:13px;font-weight:bold}.value{font-size:24px;font-weight:bold;color:#1a365d;margin-top:8px}table{width:100%;border-collapse:collapse;text-align:left}th,td{padding:10px 8px;border-bottom:1px solid #e2e8f0}th{font-size:13px;color:#64748b}.number{text-align:right;white-space:nowrap}.muted{color:#64748b}.error{color:#991b1b}@media(max-width:700px){.wrap{padding:16px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>Gross Margin Report</h1>
+    <a id="dashboard-link" class="button" hidden>← Dashboard</a>
+    <span id="navigation-message" class="muted" role="status">Loading navigation…</span>
+    <p class="notice"><strong>Estimate, all recorded dates:</strong> each receipt row is one unit. Sale value comes from Ledger; cost is the current ProductTypes BASECOST, not necessarily the cost at the time of sale. Mat Fees and Donations are excluded by STCAT. Refunds and expenses are not included. Pending receipts are included.</p>
+    <p id="status" class="muted" role="status">Loading report…</p>
+    <div id="report" hidden>
+      <div class="cards">
+        <div class="card"><div class="label">Included units</div><div class="value" id="units"></div></div>
+        <div class="card"><div class="label">Sales</div><div class="value" id="sales"></div></div>
+        <div class="card"><div class="label">Estimated cost</div><div class="value" id="cost"></div></div>
+        <div class="card"><div class="label">Estimated gross margin</div><div class="value" id="margin"></div></div>
+      </div>
+      <section><h2>Sales included</h2><div style="overflow-x:auto"><table><thead><tr><th>Ledger ID</th><th>Date</th><th>Product</th><th>STCAT</th><th class="number">Sale</th><th class="number">Cost</th><th class="number">Margin</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+      <div id="warnings" class="notice" hidden><strong>Some receipt rows were excluded and totals are incomplete:</strong><ul id="warning-list"></ul></div>
+    </div>
+  </main>
+  <script>
+    function euro(value){return new Intl.NumberFormat('en-GB',{style:'currency',currency:'EUR'}).format(value)}
+    google.script.run.withSuccessHandler(function(links){
+      const status=document.getElementById('navigation-message');
+      try{
+        if(!links||!links.reception)throw new Error('Dashboard link is unavailable.');
+        const url=new URL(links.reception);url.search='';url.hash='';url.searchParams.set('page','dashboard');
+        const link=document.getElementById('dashboard-link');link.href=url.href;link.hidden=false;status.hidden=true;
+      }catch(error){status.className='error';status.textContent='Could not load navigation: '+error.message}
+    }).withFailureHandler(function(error){const status=document.getElementById('navigation-message');status.className='error';status.textContent='Could not load navigation: '+error.message}).getDashboardDemoLinks();
+    google.script.run.withSuccessHandler(function(result){
+      const status=document.getElementById('status');
+      if(!result||!result.ok){status.className='error';status.textContent=(result&&result.message)||'Could not load report.';return}
+      const data=result.data;document.getElementById('units').textContent=data.rows.length;
+      ['sales','cost','margin'].forEach(function(key){document.getElementById(key).textContent=euro(data[key])});
+      const body=document.getElementById('rows');
+      if(!data.rows.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=7;td.textContent='No qualifying sales found.';tr.appendChild(td);body.appendChild(tr)}
+      data.rows.forEach(function(row){const tr=document.createElement('tr');[row.ledgerId,row.date,row.name+' ('+row.productId+')',row.category,euro(row.sale),euro(row.cost),euro(row.margin)].forEach(function(value,index){const td=document.createElement('td');td.textContent=value;if(index>=4)td.className='number';tr.appendChild(td)});body.appendChild(tr)});
+      if(data.warnings.length){document.getElementById('warnings').hidden=false;data.warnings.forEach(function(text){const li=document.createElement('li');li.textContent=text;document.getElementById('warning-list').appendChild(li)})}
+      status.textContent=data.warnings.length?'Report loaded with exclusions.':'Report loaded.';document.getElementById('report').hidden=false;
+    }).withFailureHandler(function(error){const status=document.getElementById('status');status.className='error';status.textContent='Could not load report: '+error.message}).getDemoGrossMargin();
+  </script>
+</body>
+</html>

@@ -30,7 +30,7 @@
         </details>
         <details class="group"><summary>Reports</summary>
           <div class="planned sub">Income over Expenditure <span class="badge">Planned</span></div>
-          <div class="planned sub">Gross Margin Report <span class="badge">Planned</span></div>
+          <a id="gross-margin-link" class="sub" hidden>Gross Margin Report <span class="badge">Estimate</span></a>
         </details>
       </nav>
     </aside>
@@ -60,7 +60,8 @@
         if(!links||!links.reception||!links.checkin)throw new Error('Navigation links are unavailable.');
         const cashier=new URL(links.reception);cashier.search='';cashier.hash='';cashier.searchParams.set('page','revenueproducts');
         const membership=new URL(cashier.href);membership.searchParams.set('page','membership');
-        [['reception-link',links.reception],['checkin-link',links.checkin],['cashier-link',cashier.href],['membership-link',membership.href]].forEach(function(link){const element=document.getElementById(link[0]);element.href=link[1];element.hidden=false});
+        const grossMargin=new URL(cashier.href);grossMargin.searchParams.set('page','grossmargin');
+        [['reception-link',links.reception],['checkin-link',links.checkin],['cashier-link',cashier.href],['membership-link',membership.href],['gross-margin-link',grossMargin.href]].forEach(function(link){const element=document.getElementById(link[0]);element.href=link[1];element.hidden=false});
         status.hidden=true;
       }catch(error){status.className='error';status.textContent='Could not load navigation: '+error.message}
     }).withFailureHandler(function(error){const status=document.getElementById('navigation-message');status.className='error';status.textContent='Could not load navigation: '+error.message}).getDashboardDemoLinks();

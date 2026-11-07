@@ -83,6 +83,8 @@ function doGet(e) {
         return getCashierRevenueProductsPage();
       case 'membership':
         return getDemoMembershipPage();
+      case 'grossmargin':
+        return getDemoGrossMarginPage();
       case 'kiosk':
       case 'mobilekiosk':
       case 'checkin':
